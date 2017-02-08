@@ -6,6 +6,7 @@ import json
 import threading
 import time
 import uuid
+from models import GeneralizedDialplan, Services
 
 server_addr = 'localhost'
 app_name = 'hello-world'
@@ -28,6 +29,8 @@ class VBoard(threading.Thread):
         self.dialplan_json = dialplan
 
     def run(self):
+        import ipdb;ipdb.set_trace();
+        print self.dialplan_json
         tot = self.dialplan_json['nodeDataArray'][1]['options']['total-notices']
         welcome_audio = self.dialplan_json['nodeDataArray'][0]['options']['audiofile']
         notice_audios = [items['options']['audiofile'] for items in self.dialplan_json['nodeDataArray'][1:tot+1]]
@@ -114,7 +117,7 @@ class VBoard(threading.Thread):
 
 class VSurvey(threading.Thread):
 
-    def __init__(self, channel_id):
+    def __init__(self, channel_id, dialplan):
         super(VSurvey, self).__init__()
         self.eventDict = {}
         self.channel_id = channel_id
@@ -149,7 +152,7 @@ class VSurvey(threading.Thread):
         self.subscribe_event('RecordingFinished')
         fname = uuid.uuid1()
         req_str = req_base+"channels/{0}/record?name={1}&format={2}&maxDurationSeconds={3}&ifExists={4}&beep={5}&terminateOn={6}"\
-        .format(channel_id, fname, 'wav', 10, 'overwrite', True, '#')
+        .format(channel_id, fname, 'wav', 10, 'overwrite', True, 'any')
         requests.post(req_str, auth=(username, password))
 
         print '\n\n', self.eventDict
@@ -162,10 +165,10 @@ class VSurvey(threading.Thread):
                     req_str = req_base + "recordings/live/{0}/stop" .format(fname)
                     a = requests.post(req_str, auth=(username, password))
                     self.unsubscribe_event('ChannelDtmfReceived')
+                    self.unsubscribe_event('RecordingFinished')
                     break
-
-        while True:
             if self.eventDict['RecordingFinished']['status']:
+                self.unsubscribe_event('ChannelDtmfReceived')
                 self.unsubscribe_event('RecordingFinished')
                 break
 
@@ -230,57 +233,67 @@ class VSurvey(threading.Thread):
         pass
         # self.eventDict = {}
 
-def simulate(channel_id, exten):
-    if exten == '1001':
-        json1001 = {
-                "nodeDataArray": [
-                      { "id": 1, "type": "Audio", "options": {"audiofile": "welcome"} },
-                      { "id": 2, "type": "Audio", "options": {"audiofile": "hello-world", "total-notices": 1} },
-                      { "id": 2, "type": "DTMFjump", "options": {"audiofile": "repeater"} },
-                      { "id": 4, "type": "Hangup", "options": {} },
-                    ],
-                "linkDataArray": [
-                      { "from": 1, "to": 2},
-                      { "from": 2, "to": 3},
-                      { "from": 3, "to": 4},
-                ]
-        }
-        return VBoard(channel_id, json1001)
-    elif exten == '1002':
-        json1002 = {
-                "nodeDataArray": [
-                      { "id": 1, "type": "Audio", "options": {"audiofile": "welcome"} },
-                      { "id": 2, "type": "Audio", "options": {"audiofile": "hello-world", "total-notices": 2} },
-                      { "id": 3, "type": "Audio", "options": {"audiofile": "hello-world"} },
-                      { "id": 2, "type": "DTMFjump", "options": {"audiofile": "repeater"} },
-                      { "id": 4, "type": "Hangup", "options": {} },
-                    ],
-                "linkDataArray": [
-                      { "from": 1, "to": 2},
-                      { "from": 2, "to": 3},
-                      { "from": 3, "to": 4},
-                ]
-        }
-        return VBoard(channel_id, json1002)
-    elif exten == '2001':
-        json2001 = {
-                "nodeDataArray": [
-                      { "id": 1, "type": "Audio", "options": {"audiofile": "welcome"} },
-                      { "id": 2, "type": "Audio", "options": {"audiofile": "hello-world", "total-notices": 3} },
-                      { "id": 3, "type": "Audio", "options": {"audiofile": "hello-world"} },
-                      { "id": 3, "type": "Audio", "options": {"audiofile": "hello-world"} },
-                      { "id": 2, "type": "DTMFjump", "options": {"audiofile": "repeater"} },
-                      { "id": 4, "type": "Hangup", "options": {} },
-                    ],
-                "linkDataArray": [
-                      { "from": 1, "to": 2},
-                      { "from": 2, "to": 3},
-                      { "from": 3, "to": 4},
-                ]
-        }
-        return VBoard(channel_id, json2001)
-    elif exten == '2002':
-        return VSurvey(channel_id)
+# def simulate(channel_id, exten):
+#     if exten == '1001':
+#         json1001 = {
+#                 "nodeDataArray": [
+#                       { "id": 1, "type": "Audio", "options": {"audiofile": "welcome"} },
+#                       { "id": 2, "type": "Audio", "options": {"audiofile": "hello-world", "total-notices": 1} },
+#                       { "id": 3, "type": "DTMFjump", "options": {"audiofile": "repeater"} },
+#                       { "id": 4, "type": "Hangup", "options": {} },
+#                     ],
+#                 "linkDataArray": [
+#                       { "from": 1, "to": 2},
+#                       { "from": 2, "to": 3},
+#                       { "from": 3, "to": 4},
+#                 ]
+#         }
+#         return VBoard(channel_id, json1001)
+#     elif exten == '1002':
+#         json1002 = {
+#                 "nodeDataArray": [
+#                       { "id": 1, "type": "Audio", "options": {"audiofile": "welcome"} },
+#                       { "id": 2, "type": "Audio", "options": {"audiofile": "hello-world", "total-notices": 2} },
+#                       { "id": 3, "type": "Audio", "options": {"audiofile": "hello-world"} },
+#                       { "id": 2, "type": "DTMFjump", "options": {"audiofile": "repeater"} },
+#                       { "id": 4, "type": "Hangup", "options": {} },
+#                     ],
+#                 "linkDataArray": [
+#                       { "from": 1, "to": 2},
+#                       { "from": 2, "to": 3},
+#                       { "from": 3, "to": 4},
+#                 ]
+#         }
+#         return VBoard(channel_id, json1002)
+#     elif exten == '2001':
+#         json2001 = {
+#                 "nodeDataArray": [
+#                       { "id": 1, "type": "Audio", "options": {"audiofile": "welcome"} },
+#                       { "id": 2, "type": "Audio", "options": {"audiofile": "hello-world", "total-notices": 3} },
+#                       { "id": 3, "type": "Audio", "options": {"audiofile": "hello-world"} },
+#                       { "id": 3, "type": "Audio", "options": {"audiofile": "hello-world"} },
+#                       { "id": 2, "type": "DTMFjump", "options": {"audiofile": "repeater"} },
+#                       { "id": 4, "type": "Hangup", "options": {} },
+#                     ],
+#                 "linkDataArray": [
+#                       { "from": 1, "to": 2},
+#                       { "from": 2, "to": 3},
+#                       { "from": 3, "to": 4},
+#                 ]
+#         }
+#         return VBoard(channel_id, json2001)
+#     elif exten == '2002':
+#         return VSurvey(channel_id)
+
+def get_dialplan_from_db(channel_id, exten):
+    for service in Services.select().where(Services.extension == exten, Services.isactive == True):
+        gen_dialplan = GeneralizedDialplan.select().where(GeneralizedDialplan.id == service.service.id)
+        service_type = service.service_type.id
+        dialplan = gen_dialplan[0].dialplan
+        if service_type == 1:
+            return VBoard(channel_id, dialplan)
+        elif service_type == 2:
+            return VSurvey(channel_id, dialplan)
 
 try:
     for event_str in iter(lambda: ws.recv(), None):
@@ -292,7 +305,8 @@ try:
             exten = event_json['channel']['dialplan']['exten']
             print '\nStasis Start Time: ', channel_id, time.ctime()
             if channel_id not in activeCalls:
-                activeCalls[channel_id] = simulate(channel_id, exten)
+                # activeCalls[channel_id] = simulate(channel_id, exten)
+                activeCalls[channel_id] = get_dialplan_from_db(channel_id, exten)
                 activeCalls[channel_id].start()
 
         elif event_json['type'] =='StasisEnd':
