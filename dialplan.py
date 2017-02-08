@@ -6,7 +6,7 @@ import json
 import threading
 import time
 import uuid
-from models import GeneralizedDialplan, Services
+from models import GeneralizedDialplan, Services, GeneralizedDataIncoming
 
 server_addr = 'localhost'
 app_name = 'hello-world'
@@ -22,15 +22,18 @@ activeCalls = {}
 
 class VBoard(threading.Thread):
 
-    def __init__(self, channel_id, dialplan):
+    def __init__(self, channel_id, dialplan, incoming_number, module_id):
         super(VBoard, self).__init__()
         self.eventDict = {}
         self.channel_id = channel_id
         self.dialplan_json = dialplan
+        self.incoming_number = incoming_number
+        self.module_id = module_id
+        self.output = {}
+        self.playbackCompleted = False
+        self.timesRepeated = 0
 
     def run(self):
-        import ipdb;ipdb.set_trace();
-        print self.dialplan_json
         tot = self.dialplan_json['nodeDataArray'][1]['options']['total-notices']
         welcome_audio = self.dialplan_json['nodeDataArray'][0]['options']['audiofile']
         notice_audios = [items['options']['audiofile'] for items in self.dialplan_json['nodeDataArray'][1:tot+1]]
@@ -40,6 +43,9 @@ class VBoard(threading.Thread):
         a = requests.post(req_str, auth=(username, password))
         if a.status_code == 204:
             print '\nCall Answer Time: ', time.ctime()
+
+        self.output['playbackCompleted'] = self.playbackCompleted
+        self.output['timesRepeated'] = self.timesRepeated
 
         # step1 - welcome message
         self.subscribe_event('PlaybackFinished')
@@ -73,6 +79,9 @@ class VBoard(threading.Thread):
             while True:
                 if self.eventDict['PlaybackFinished']['status']:
                     self.unsubscribe_event('PlaybackFinished')
+                    self.playbackCompleted = True
+                    self.output['playbackCompleted'] = self.playbackCompleted
+                    self.output['timesRepeated'] = self.timesRepeated
                     break
 
             # dtmf block
@@ -81,6 +90,8 @@ class VBoard(threading.Thread):
                 if self.eventDict['ChannelDtmfReceived']['status']:
                     digit = self.eventDict['ChannelDtmfReceived']['eventJson']['digit']
                     if digit == '*':
+                        self.timesRepeated += 1
+                        self.output['timesRepeated'] = self.timesRepeated
                         self.unsubscribe_event('ChannelDtmfReceived')
                         break
                     elif digit == '#':
@@ -109,24 +120,34 @@ class VBoard(threading.Thread):
         if eventName in self.eventDict:
             self.eventDict.pop(eventName)
         else:
-            print 'No event of this type!'
+            print 'No event of this type!', eventName
 
     def end(self):
-        self.eventDict = {}
+        print '\nVBoard output: ', self.output, '\n'
+        GeneralizedDataIncoming.create(data = self.output, incoming_number = self.incoming_number,\
+                                       generalized_dialplan = self.module_id)
 
 
 class VSurvey(threading.Thread):
 
-    def __init__(self, channel_id, dialplan):
+    def __init__(self, channel_id, dialplan, incoming_number, module_id):
         super(VSurvey, self).__init__()
         self.eventDict = {}
         self.channel_id = channel_id
+        self.incoming_number = incoming_number
+        self.module_id = module_id
+        self.output = {}
+        self.playbackCompleted = False
+        self.fname = ''
 
     def run(self):
         req_str = req_base + "channels/%s/answer" % self.channel_id
         a = requests.post(req_str, auth=(username, password))
         if a.status_code == 204:
             print '\nCall Answer Time: ', time.ctime()
+
+        self.output['playbackCompleted'] = self.playbackCompleted
+        self.output['recordedFileName'] = self.fname
 
         # step1 - welcome message
         self.subscribe_event('PlaybackFinished')
@@ -155,9 +176,9 @@ class VSurvey(threading.Thread):
         .format(channel_id, fname, 'wav', 10, 'overwrite', True, 'any')
         requests.post(req_str, auth=(username, password))
 
-        print '\n\n', self.eventDict
+        self.output['recordedFileName'] = str(fname)
+
         self.subscribe_event('ChannelDtmfReceived')
-        print '\n\n', self.eventDict
         while True:
             if self.eventDict['ChannelDtmfReceived']['status']:
                 digit = self.eventDict['ChannelDtmfReceived']['eventJson']['digit']
@@ -196,6 +217,9 @@ class VSurvey(threading.Thread):
                     self.unsubscribe_event('ChannelDtmfReceived')
                     break
 
+        self.playbackCompleted = True
+        self.output['playbackCompleted'] = self.playbackCompleted
+
         # step5 - thank you message
         self.subscribe_event('PlaybackFinished')
         req_str = req_base + ("channels/%s/play?media=sound:%s" % (self.channel_id, 'goodbye'))
@@ -230,8 +254,9 @@ class VSurvey(threading.Thread):
             print 'No event of this type!'
 
     def end(self):
-        pass
-        # self.eventDict = {}
+        print '\n\nVSurvey output: ', self.output
+        GeneralizedDataIncoming.create(data = self.output, incoming_number = self.incoming_number,\
+                                       generalized_dialplan = self.module_id)
 
 # def simulate(channel_id, exten):
 #     if exten == '1001':
@@ -285,15 +310,16 @@ class VSurvey(threading.Thread):
 #     elif exten == '2002':
 #         return VSurvey(channel_id)
 
-def get_dialplan_from_db(channel_id, exten):
+def get_dialplan_from_db(channel_id, exten, incoming_number):
     for service in Services.select().where(Services.extension == exten, Services.isactive == True):
         gen_dialplan = GeneralizedDialplan.select().where(GeneralizedDialplan.id == service.service.id)
         service_type = service.service_type.id
+        module_id = service.service.id
         dialplan = gen_dialplan[0].dialplan
         if service_type == 1:
-            return VBoard(channel_id, dialplan)
+            return VBoard(channel_id, dialplan, incoming_number, module_id)
         elif service_type == 2:
-            return VSurvey(channel_id, dialplan)
+            return VSurvey(channel_id, dialplan, incoming_number, module_id)
 
 try:
     for event_str in iter(lambda: ws.recv(), None):
@@ -303,10 +329,11 @@ try:
         if event_json['type'] == 'StasisStart':
             channel_id = event_json['channel']['id']
             exten = event_json['channel']['dialplan']['exten']
+            incoming_number = event_json['channel']['caller']['number']
             print '\nStasis Start Time: ', channel_id, time.ctime()
             if channel_id not in activeCalls:
                 # activeCalls[channel_id] = simulate(channel_id, exten)
-                activeCalls[channel_id] = get_dialplan_from_db(channel_id, exten)
+                activeCalls[channel_id] = get_dialplan_from_db(channel_id, exten, incoming_number)
                 activeCalls[channel_id].start()
 
         elif event_json['type'] =='StasisEnd':
