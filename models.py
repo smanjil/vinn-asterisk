@@ -1,7 +1,7 @@
 from peewee import *
 from playhouse.postgres_ext import *
 
-database = PostgresqlDatabase('voiceinndb', **{})
+database = PostgresqlDatabase('voiceinndb', **{'user': 'ano'})
 
 class UnknownField(object):
     def __init__(self, *_, **__): pass
@@ -52,10 +52,12 @@ class Organization(BaseModel):
 
 class IncomingLog(BaseModel):
     call_duration = FloatField(null=True)
-    call_time = DateTimeField(null=True)
-    complete = BooleanField(null=True)
+    call_end_time = DateTimeField(null=True)
+    call_start_time = DateTimeField(null=True)
+    completecall = BooleanField(db_column='completeCall', null=True)
+    extension = IntegerField(null=True)
+    incoming_number = BigIntegerField(null=True)
     org = ForeignKeyField(db_column='org_id', null=True, rel_model=Organization, to_field='id')
-    phone = BigIntegerField(null=True)
     service = CharField(null=True)
 
     class Meta:
@@ -96,3 +98,4 @@ class Users(BaseModel):
 
     class Meta:
         db_table = 'users'
+

@@ -6,7 +6,8 @@ import json
 import threading
 import time
 import uuid
-from models import GeneralizedDialplan, Services, GeneralizedDataIncoming
+import arrow
+from models import GeneralizedDialplan, Services, GeneralizedDataIncoming, IncomingLog
 
 server_addr = 'localhost'
 app_name = 'hello-world'
@@ -22,13 +23,16 @@ activeCalls = {}
 
 class VBoard(threading.Thread):
 
-    def __init__(self, channel_id, dialplan, incoming_number, module_id):
+    def __init__(self, channel_id, dialplan, incoming_number, module_id, exten, service_name, org_id):
         super(VBoard, self).__init__()
         self.eventDict = {}
         self.channel_id = channel_id
         self.dialplan_json = dialplan
         self.incoming_number = incoming_number
         self.module_id = module_id
+        self.exten = exten
+        self.service_name = service_name
+        self.org_id = org_id
         self.output = {}
         self.playbackCompleted = False
         self.timesRepeated = 0
@@ -41,8 +45,8 @@ class VBoard(threading.Thread):
 
         req_str = req_base + "channels/%s/answer" % self.channel_id
         a = requests.post(req_str, auth=(username, password))
-        if a.status_code == 204:
-            print '\nCall Answer Time: ', time.ctime()
+        # if a.status_code == 204:
+        #     self.start_time = time.ctime()
 
         self.output['playbackCompleted'] = self.playbackCompleted
         self.output['timesRepeated'] = self.timesRepeated
@@ -127,20 +131,29 @@ class VBoard(threading.Thread):
         else:
             print 'No event of this type!', eventName
 
-    def end(self):
+    def end(self, start_time, end_time):
         print '\nVBoard output: ', self.output, '\n'
+        start_time = arrow.get(start_time)
+        end_time = arrow.get(end_time)
+        duration = (end_time - start_time).total_seconds()
+        IncomingLog.create(org_id = self.org_id, service = self.service_name, call_start_time = start_time.isoformat(), \
+                           call_end_time = end_time.isoformat(), call_duration = duration, completecall = self.playbackCompleted, \
+                           incoming_number = self.incoming_number, extension = self.exten)
         GeneralizedDataIncoming.create(data = self.output, incoming_number = self.incoming_number,\
                                        generalized_dialplan = self.module_id)
 
 
 class VSurvey(threading.Thread):
 
-    def __init__(self, channel_id, dialplan, incoming_number, module_id):
+    def __init__(self, channel_id, dialplan, incoming_number, module_id, exten, service_name, org_id):
         super(VSurvey, self).__init__()
         self.eventDict = {}
         self.channel_id = channel_id
         self.incoming_number = incoming_number
         self.module_id = module_id
+        self.service_name = service_name
+        self.org_id = org_id
+        self.exten = exten
         self.output = {}
         self.playbackCompleted = False
         self.fname = ''
@@ -148,8 +161,8 @@ class VSurvey(threading.Thread):
     def run(self):
         req_str = req_base + "channels/%s/answer" % self.channel_id
         a = requests.post(req_str, auth=(username, password))
-        if a.status_code == 204:
-            print '\nCall Answer Time: ', time.ctime()
+        # if a.status_code == 204:
+        #     print '\nCall Answer Time: ', time.ctime()
 
         self.output['playbackCompleted'] = self.playbackCompleted
         self.output['recordedFileName'] = self.fname
@@ -260,8 +273,14 @@ class VSurvey(threading.Thread):
         else:
             print 'No event of this type!'
 
-    def end(self):
+    def end(self, start_time, end_time):
         print '\n\nVSurvey output: ', self.output
+        start_time = arrow.get(start_time)
+        end_time = arrow.get(end_time)
+        duration = (end_time - start_time).total_seconds()
+        IncomingLog.create(org_id = self.org_id, service = self.service_name, call_start_time = start_time.isoformat(), \
+                           call_end_time = end_time.isoformat(), call_duration = duration, completecall = self.playbackCompleted, \
+                           incoming_number = self.incoming_number, extension = self.exten)
         GeneralizedDataIncoming.create(data = self.output, incoming_number = self.incoming_number,\
                                        generalized_dialplan = self.module_id)
 
@@ -321,12 +340,14 @@ def get_dialplan_from_db(channel_id, exten, incoming_number):
     for service in Services.select().where(Services.extension == exten, Services.isactive == True):
         gen_dialplan = GeneralizedDialplan.select().where(GeneralizedDialplan.id == service.service.id)
         service_type = service.service_type.id
+        service_name = service.service_type.name
+        org_id = service.org_id
         module_id = service.service.id
         dialplan = gen_dialplan[0].dialplan
         if service_type == 1:
-            return VBoard(channel_id, dialplan, incoming_number, module_id)
+            return VBoard(channel_id, dialplan, incoming_number, module_id, exten, service_name, org_id)
         elif service_type == 2:
-            return VSurvey(channel_id, dialplan, incoming_number, module_id)
+            return VSurvey(channel_id, dialplan, incoming_number, module_id, exten, service_name, org_id)
 
 try:
     for event_str in iter(lambda: ws.recv(), None):
@@ -337,7 +358,6 @@ try:
             channel_id = event_json['channel']['id']
             exten = event_json['channel']['dialplan']['exten']
             incoming_number = event_json['channel']['caller']['number']
-            print '\nStasis Start Time: ', channel_id, time.ctime()
             if channel_id not in activeCalls:
                 # activeCalls[channel_id] = simulate(channel_id, exten)
                 activeCalls[channel_id] = get_dialplan_from_db(channel_id, exten, incoming_number)
@@ -345,10 +365,10 @@ try:
 
         elif event_json['type'] =='StasisEnd':
             print 'StasisEnd'
-            channel_id = event_json['channel']['id']
-            print '\nStasis End Time: ', channel_id, time.ctime()
+            start_time = event_json['channel']['creationtime']
+            end_time = event_json['timestamp']
             if channel_id in activeCalls:
-                activeCalls[channel_id].end()
+                activeCalls[channel_id].end(start_time, end_time)
                 del activeCalls[channel_id]
                 # activeCalls.pop(channel_id)
 
