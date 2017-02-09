@@ -53,11 +53,13 @@ class VBoard(threading.Thread):
         requests.post(req_str, auth=(username, password))
 
         while True:
+            time.sleep(0.3)
             if self.eventDict['PlaybackFinished']['status']:
                 self.unsubscribe_event('PlaybackFinished')
                 break
 
         while True:
+            time.sleep(0.3)
             # step2 - notice message
             # sound-lists
             # sounds = ['hello-world', 'hello-world', 'goodbye']
@@ -67,6 +69,7 @@ class VBoard(threading.Thread):
                 requests.post(req_str, auth=(username, password))
 
                 while True:
+                    time.sleep(0.3)
                     if self.eventDict['PlaybackFinished']['status']:
                         self.unsubscribe_event('PlaybackFinished')
                         break
@@ -77,6 +80,7 @@ class VBoard(threading.Thread):
             requests.post(req_str, auth=(username, password))
 
             while True:
+                time.sleep(0.3)
                 if self.eventDict['PlaybackFinished']['status']:
                     self.unsubscribe_event('PlaybackFinished')
                     self.playbackCompleted = True
@@ -87,6 +91,7 @@ class VBoard(threading.Thread):
             # dtmf block
             self.subscribe_event('ChannelDtmfReceived')
             while True:
+                time.sleep(0.3)
                 if self.eventDict['ChannelDtmfReceived']['status']:
                     digit = self.eventDict['ChannelDtmfReceived']['eventJson']['digit']
                     if digit == '*':
@@ -151,20 +156,22 @@ class VSurvey(threading.Thread):
 
         # step1 - welcome message
         self.subscribe_event('PlaybackFinished')
-        req_str = req_base + ("channels/%s/play?media=sound:%s" % (self.channel_id, 'welcome'))
+        req_str = req_base + ("channels/%s/play?media=sound:%s" % (self.channel_id, '2002_vs_010_welcome'))
         requests.post(req_str, auth=(username, password))
 
         while True:
+            time.sleep(0.3)
             if self.eventDict['PlaybackFinished']['status']:
                 self.unsubscribe_event('PlaybackFinished')
                 break
 
         # step2 - notice message
         self.subscribe_event('PlaybackFinished')
-        req_str = req_base + ("channels/%s/play?media=sound:%s" % (self.channel_id, 'hello-world'))
+        req_str = req_base + ("channels/%s/play?media=sound:%s" % (self.channel_id, '2002_vs_020_question1'))
         requests.post(req_str, auth=(username, password))
 
         while True:
+            time.sleep(0.3)
             if self.eventDict['PlaybackFinished']['status']:
                 self.unsubscribe_event('PlaybackFinished')
                 break
@@ -180,6 +187,7 @@ class VSurvey(threading.Thread):
 
         self.subscribe_event('ChannelDtmfReceived')
         while True:
+            time.sleep(0.3)
             if self.eventDict['ChannelDtmfReceived']['status']:
                 digit = self.eventDict['ChannelDtmfReceived']['eventJson']['digit']
                 if digit == '#':
@@ -195,10 +203,11 @@ class VSurvey(threading.Thread):
 
         # step4 - repeat message
         self.subscribe_event('PlaybackFinished')
-        req_str = req_base + ("channels/%s/play?media=sound:%s" % (self.channel_id, 'options'))
+        req_str = req_base + ("channels/%s/play?media=sound:%s" % (self.channel_id, '2002_vs_030_question2'))
         requests.post(req_str, auth=(username, password))
 
         while True:
+            time.sleep(0.3)
             if self.eventDict['PlaybackFinished']['status']:
                 self.unsubscribe_event('PlaybackFinished')
                 break
@@ -206,13 +215,10 @@ class VSurvey(threading.Thread):
         # dtmf block
         self.subscribe_event('ChannelDtmfReceived')
         while True:
+            time.sleep(0.3)
             if self.eventDict['ChannelDtmfReceived']['status']:
                 digit = self.eventDict['ChannelDtmfReceived']['eventJson']['digit']
-                if digit == '1':
-                    print digit
-                    self.unsubscribe_event('ChannelDtmfReceived')
-                    break
-                elif digit == '2':
+                if int(digit) in range(0, 10):
                     print digit
                     self.unsubscribe_event('ChannelDtmfReceived')
                     break
@@ -222,10 +228,11 @@ class VSurvey(threading.Thread):
 
         # step5 - thank you message
         self.subscribe_event('PlaybackFinished')
-        req_str = req_base + ("channels/%s/play?media=sound:%s" % (self.channel_id, 'goodbye'))
+        req_str = req_base + ("channels/%s/play?media=sound:%s" % (self.channel_id, '2002_vs_040_endmsg'))
         requests.post(req_str, auth=(username, password))
 
         while True:
+            time.sleep(0.3)
             if self.eventDict['PlaybackFinished']['status']:
                 self.unsubscribe_event('PlaybackFinished')
                 break
