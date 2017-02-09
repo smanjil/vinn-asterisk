@@ -72,35 +72,40 @@ class VBoard(threading.Thread):
                 self.unsubscribe_event('PlaybackFinished')
                 break
 
+        uuids_list = []
         while True:
             time.sleep(0.3)
             # step2 - notice message
             # sound-lists
             # sounds = ['hello-world', 'hello-world', 'goodbye']
             for sound in notice_audios:
-                self.subscribe_event('PlaybackFinished')
-                req_str = req_base + ("channels/%s/play?media=sound:%s" % (self.channel_id, sound))
+                # self.subscribe_event('PlaybackFinished')
+                id = uuid.uuid1()
+                uuids_list.append(id)
+                req_str = req_base + ("channels/%s/play/%s?media=sound:%s" % (self.channel_id, id, sound))
                 requests.post(req_str, auth=(username, password))
 
-                while True:
-                    time.sleep(0.3)
-                    if self.eventDict['PlaybackFinished']['status']:
-                        self.unsubscribe_event('PlaybackFinished')
-                        break
+                # while True:
+                #     time.sleep(0.3)
+                #     if self.eventDict['PlaybackFinished']['status']:
+                #         self.unsubscribe_event('PlaybackFinished')
+                #         break
 
             # step3 - repeat message
-            self.subscribe_event('PlaybackFinished')
-            req_str = req_base + ("channels/%s/play?media=sound:%s" % (self.channel_id, repeat_audio))
+            # self.subscribe_event('PlaybackFinished')
+            id = uuid.uuid1()
+            uuids_list.append(id)
+            req_str = req_base + ("channels/%s/play/%s?media=sound:%s" % (self.channel_id, id, repeat_audio))
             requests.post(req_str, auth=(username, password))
 
-            while True:
-                time.sleep(0.3)
-                if self.eventDict['PlaybackFinished']['status']:
-                    self.unsubscribe_event('PlaybackFinished')
-                    self.playbackCompleted = True
-                    self.output['playbackCompleted'] = self.playbackCompleted
-                    self.output['timesRepeated'] = self.timesRepeated
-                    break
+            # while True:
+            #     time.sleep(0.3)
+                # if self.eventDict['PlaybackFinished']['status']:
+                #     self.unsubscribe_event('PlaybackFinished')
+                    # self.playbackCompleted = True
+                    # self.output['playbackCompleted'] = self.playbackCompleted
+                    # self.output['timesRepeated'] = self.timesRepeated
+                    # break
 
             # dtmf block
             self.subscribe_event('ChannelDtmfReceived')
@@ -108,6 +113,9 @@ class VBoard(threading.Thread):
                 time.sleep(0.3)
                 if self.eventDict['ChannelDtmfReceived']['status']:
                     digit = self.eventDict['ChannelDtmfReceived']['eventJson']['digit']
+                    for ids in uuids_list:
+                        req_str = req_base + ("playbacks/%s" % (ids))
+                        requests.delete(req_str, auth=(username, password))
                     if digit == '*':
                         self.timesRepeated += 1
                         self.output['timesRepeated'] = self.timesRepeated
