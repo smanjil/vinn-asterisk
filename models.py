@@ -1,7 +1,7 @@
 from peewee import *
 from playhouse.postgres_ext import *
 
-database = PostgresqlDatabase('voiceinndb', **{'user': 'ano'})
+database = PostgresqlDatabase('voiceinndb', **{'user': 'voiceinn'})
 
 class UnknownField(object):
     def __init__(self, *_, **__): pass
@@ -27,7 +27,8 @@ class GeneralizedDialplan(BaseModel):
 class GeneralizedDataIncoming(BaseModel):
     data = JSONField(null=True)
     generalized_dialplan = ForeignKeyField(db_column='generalized_dialplan_id', null=True, rel_model=GeneralizedDialplan, to_field='id')
-    incoming_number = BigIntegerField(null=True)
+    #incoming_number = BigIntegerField(null=True)
+    incoming_number = CharField(null=True)
 
     class Meta:
         db_table = 'generalized_data_incoming'
@@ -55,8 +56,10 @@ class IncomingLog(BaseModel):
     call_end_time = DateTimeField(null=True)
     call_start_time = DateTimeField(null=True)
     completecall = BooleanField(db_column='completeCall', null=True)
-    extension = IntegerField(null=True)
-    incoming_number = BigIntegerField(null=True)
+    #extension = IntegerField(null=True)
+    extension = CharField(null=True)
+    #incoming_number = BigIntegerField(null=True)
+    incoming_number = CharField(null=True)
     org = ForeignKeyField(db_column='org_id', null=True, rel_model=Organization, to_field='id')
     service = CharField(null=True)
 
@@ -78,7 +81,8 @@ class Services(BaseModel):
     allocated_channels = IntegerField(null=True)
     channels_inuse = IntegerField(null=True)
     created = DateTimeField(null=True)
-    extension = IntegerField(null=True)
+    #extension = IntegerField(null=True)
+    extension = CharField(null=True)
     isactive = BooleanField(null=True)
     org = ForeignKeyField(db_column='org_id', null=True, rel_model=Organization, to_field='id')
     service = ForeignKeyField(db_column='service_id', null=True, rel_model=GeneralizedDialplan, to_field='id')

@@ -8,11 +8,12 @@ import time
 import uuid
 import arrow
 from models import GeneralizedDialplan, Services, GeneralizedDataIncoming, IncomingLog
+from nuwakot import VNuwakot
 
 server_addr = 'localhost'
 app_name = 'hello-world'
-username = 'asterisk'
-password = 'asterisk'
+username = 'asterusr'
+password = 'asterusrkopass37'
 url = "ws://%s:8088/ari/events?app=%s&api_key=%s:%s" % (server_addr, app_name, username, password)
 
 req_base = "http://%s:8088/ari/" % server_addr
@@ -159,10 +160,9 @@ class VBoard(threading.Thread):
         query = Services.update(channels_inuse = self.channels_inuse).where(Services.extension == self.exten)
         query.execute()
         print self.allocated_channels, self.channels_inuse
-
         IncomingLog.create(org_id = self.org_id, service = self.service_name, call_start_time = start_time.isoformat(), \
                            call_end_time = end_time.isoformat(), call_duration = duration, completecall = self.playbackCompleted, \
-                           incoming_number = self.incoming_number, extension = self.exten)
+                           incoming_number = str(self.incoming_number), extension = str(self.exten))
         GeneralizedDataIncoming.create(data = self.output, incoming_number = self.incoming_number,\
                                        generalized_dialplan = self.module_id)
 
@@ -390,7 +390,7 @@ class VSurvey(threading.Thread):
 #         return VSurvey(channel_id)
 
 def get_dialplan_from_db(channel_id, exten, incoming_number):
-    for service in Services.select().where(Services.extension == exten, Services.isactive == True):
+    for service in Services.select().where(Services.extension == str(exten), Services.isactive == True):
         allocated_channels = service.allocated_channels
         channels_inuse = service.channels_inuse
         gen_dialplan = GeneralizedDialplan.select().where(GeneralizedDialplan.id == service.service.id)
@@ -403,6 +403,8 @@ def get_dialplan_from_db(channel_id, exten, incoming_number):
             return VBoard(channel_id, dialplan, incoming_number, module_id, exten, service_name, org_id, allocated_channels, channels_inuse)
         elif service_type == 2:
             return VSurvey(channel_id, dialplan, incoming_number, module_id, exten, service_name, org_id, allocated_channels, channels_inuse)
+        elif service_type == 3:
+            return VNuwakot(channel_id, dialplan, incoming_number, module_id, exten, service_name, org_id, allocated_channels, channels_inuse)
 
 try:
     for event_str in iter(lambda: ws.recv(), None):
