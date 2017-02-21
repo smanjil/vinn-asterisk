@@ -31,6 +31,10 @@ class VNuwakot(threading.Thread):
         self.output = {}
         self.playbackCompleted = False
         self.fname = ''
+        self.jsonoutput = {'vboard': {
+                                      'vboard1':False,'vboard2':False},
+                           'vsurvey': {
+                                      'vdc_audio':None,'emergency_or_eye':None,'msg_audio':None}}
 
     def run(self):
         if self.channels_inuse < self.allocated_channels:
@@ -51,11 +55,183 @@ class VNuwakot(threading.Thread):
 
         #step 3
         def Menu1():
-            pass
+            #self.subscribe_event('PlaybackFinished')
+            id = uuid.uuid1()
+            req_str = req_base + ("channels/%s/play/%s?media=sound:%s" % (self.channel_id, id, 'nuwakot/3'))
+            requests.post(req_str, auth=(username, password))
 
+            #while True:
+            #    time.sleep(0.3)
+            #    if self.eventDict['PlaybackFinished']['status']:
+            #        self.unsubscribe_event('PlaybackFinished')
+            #        break
+
+            # step2B - Wait for dtmf input for menu. Choices are 1 and 2
+            self.subscribe_event('ChannelDtmfReceived')
+            digit = ''
+            # total_len = 3
+            while True:
+                time.sleep(0.3)
+                if self.eventDict['ChannelDtmfReceived']['status']:
+                    digit = self.eventDict['ChannelDtmfReceived']['eventJson']['digit']
+                    if digit == '1':
+                        print digit
+                        self.unsubscribe_event('ChannelDtmfReceived')
+                        req_str = req_base + ("playbacks/%s" % (id))
+                        requests.delete(req_str, auth=(username, password))
+                        # step 2B.1
+                        self.subscribe_event('PlaybackFinished')
+                        req_str = req_base + ("channels/%s/play?media=sound:%s" % (self.channel_id, 'nuwakot/4'))
+                        requests.post(req_str, auth=(username, password))
+
+                        while True:
+                            time.sleep(0.3)
+                            if self.eventDict['PlaybackFinished']['status']:
+                                self.unsubscribe_event('PlaybackFinished')
+                                #log
+                                self.jsonoutput['vboard']['vboard1'] = True
+                                break
+                        break
+                    elif digit == '2':
+                        print digit
+                        self.unsubscribe_event('ChannelDtmfReceived')
+                        req_str = req_base + ("playbacks/%s" % (id))
+                        requests.delete(req_str, auth=(username, password))
+                        d = uuid.uuid1()
+                        # step 2B.2
+                        self.subscribe_event('PlaybackFinished')
+                        req_str = req_base + ("channels/%s/play?media=sound:%s" % (self.channel_id, 'nuwakot/5'))
+                        requests.post(req_str, auth=(username, password))
+
+                        while True:
+                            time.sleep(0.3)
+                            if self.eventDict['PlaybackFinished']['status']:
+                                self.unsubscribe_event('PlaybackFinished')
+                                #log
+                                self.jsonoutput['vboard']['vboard2'] = True
+                                break
+                        break
+            # hangup
+            req_str = req_base + "channels/%s" % self.channel_id
+            requests.delete(req_str, auth=(username, password))
         #step 6
         def Menu2():
-            pass
+            #Tapiko ga bi sa wa nagarpalika ko naam bhannuhos ani # thichuhos
+            self.subscribe_event('PlaybackFinished')
+            req_str = req_base + ("channels/%s/play?media=sound:%s" % (self.channel_id, 'nuwakot/6'))
+            requests.post(req_str, auth=(username, password))
+
+            while True:
+                time.sleep(0.3)
+                if self.eventDict['PlaybackFinished']['status']:
+                    self.unsubscribe_event('PlaybackFinished')
+                    break
+
+            self.subscribe_event('RecordingFinished')
+            fname = uuid.uuid1()
+            req_str = req_base + "channels/{0}/record?name={1}&format={2}&maxDurationSeconds={3}&ifExists={4}&beep={5}&terminateOn={6}" \
+                .format(self.channel_id, fname, 'wav', 10, 'overwrite', True, 'any')
+            requests.post(req_str, auth=(username, password))
+            #log
+            self.jsonoutput['vsurvey']['vdc_audio'] = str(fname)
+
+            self.output['recordedFileName'] = str(fname)
+
+            self.subscribe_event('ChannelDtmfReceived')
+            while True:
+                time.sleep(0.3)
+                if self.eventDict['ChannelDtmfReceived']['status']:
+                    digit = self.eventDict['ChannelDtmfReceived']['eventJson']['digit']
+                    if digit == '#':
+                        req_str = req_base + "recordings/live/{0}/stop".format(fname)
+                        a = requests.post(req_str, auth=(username, password))
+                        self.unsubscribe_event('ChannelDtmfReceived')
+                        self.unsubscribe_event('RecordingFinished')
+                        break
+                if self.eventDict['RecordingFinished']['status']:
+                    self.unsubscribe_event('ChannelDtmfReceived')
+                    self.unsubscribe_event('RecordingFinished')
+                    break
+
+            # kripaya emeergency sewa sambandhi samasya rakhna ko lagi 1 or akhako sewa sambandhi samasya rakhna ko lagi
+            # 2 thichnuhos
+            #self.subscribe_event('PlaybackFinished')
+            id = uuid.uuid1()
+            req_str = req_base + ("channels/%s/play/%s?media=sound:%s" % (self.channel_id, id, 'nuwakot/7'))
+            requests.post(req_str, auth=(username, password))
+
+            #while True:
+            #    time.sleep(0.3)
+            #    if self.eventDict['PlaybackFinished']['status']:
+            #        self.unsubscribe_event('PlaybackFinished')
+            #        break
+
+            self.subscribe_event('ChannelDtmfReceived')
+            digit = ''
+            # total_len = 3
+            while True:
+                time.sleep(0.3)
+                if self.eventDict['ChannelDtmfReceived']['status']:
+                    digit = self.eventDict['ChannelDtmfReceived']['eventJson']['digit']
+                    if int(digit) in range(1, 3):
+                        req_str = req_base + ("playbacks/%s" % (id))
+                        requests.delete(req_str, auth=(username, password))
+                        self.unsubscribe_event('ChannelDtmfReceived')
+                        #log
+                        self.jsonoutput['vsurvey']['emergency_or_eye'] = digit
+                        break
+
+            # tapaiko samasya vannuhos ani # thichnuhos
+            self.subscribe_event('PlaybackFinished')
+            req_str = req_base + ("channels/%s/play?media=sound:%s" % (self.channel_id, 'nuwakot/8'))
+            requests.post(req_str, auth=(username, password))
+
+            while True:
+                time.sleep(0.3)
+                if self.eventDict['PlaybackFinished']['status']:
+                    self.unsubscribe_event('PlaybackFinished')
+                    break
+
+            self.subscribe_event('RecordingFinished')
+            fname = uuid.uuid1()
+            req_str = req_base + "channels/{0}/record?name={1}&format={2}&maxDurationSeconds={3}&ifExists={4}&beep={5}&terminateOn={6}" \
+                .format(self.channel_id, fname, 'wav', 10, 'overwrite', True, 'any')
+            requests.post(req_str, auth=(username, password))
+            #log
+            self.jsonoutput['vsurvey']['msg_audio'] = str(fname)
+
+            self.output['recordedFileName'] = str(fname)
+
+            self.subscribe_event('ChannelDtmfReceived')
+            while True:
+                time.sleep(0.3)
+                if self.eventDict['ChannelDtmfReceived']['status']:
+                    digit = self.eventDict['ChannelDtmfReceived']['eventJson']['digit']
+                    if digit == '#':
+                        req_str = req_base + "recordings/live/{0}/stop".format(fname)
+                        a = requests.post(req_str, auth=(username, password))
+                        self.unsubscribe_event('ChannelDtmfReceived')
+                        self.unsubscribe_event('RecordingFinished')
+                        break
+                if self.eventDict['RecordingFinished']['status']:
+                    self.unsubscribe_event('ChannelDtmfReceived')
+                    self.unsubscribe_event('RecordingFinished')
+                    break
+
+            # tapaiko samasya record vaeko xa
+            self.subscribe_event('PlaybackFinished')
+            req_str = req_base + ("channels/%s/play?media=sound:%s" % (self.channel_id, 'nuwakot/9'))
+            requests.post(req_str, auth=(username, password))
+
+            while True:
+                time.sleep(0.3)
+                if self.eventDict['PlaybackFinished']['status']:
+                    self.unsubscribe_event('PlaybackFinished')
+                    break
+            # hangup
+            req_str = req_base + "channels/%s" % self.channel_id
+            requests.delete(req_str, auth=(username, password))
+
 
         # step1 - Play welcome message
         # Namaskar Nuwakot Hospital ko IVR sewa ma yaha lai swagat cha
@@ -68,37 +244,42 @@ class VNuwakot(threading.Thread):
             if self.eventDict['PlaybackFinished']['status']:
                 self.unsubscribe_event('PlaybackFinished')
                 break
- 
+
         # step2A - Play Menu audio
         # kripaya yesh hospital ko sewa bare bhjhna 1 thichnuhos. yesh hospital sanga
         # sambandhit samashya Report garna 2 thichnuhos.
-        self.subscribe_event('PlaybackFinished')
-        req_str = req_base + ("channels/%s/play?media=sound:%s" % (self.channel_id, 'nuwakot/2'))
+        #self.subscribe_event('PlaybackFinished')
+        id = uuid.uuid1()
+        req_str = req_base + ("channels/%s/play/%s?media=sound:%s" % (self.channel_id, id, 'nuwakot/2'))
         requests.post(req_str, auth=(username, password))
 
-        while True:
-            time.sleep(0.3)
-            if self.eventDict['PlaybackFinished']['status']:
-                self.unsubscribe_event('PlaybackFinished')
-                break
+        #while True:
+        #    time.sleep(0.3)
+        #    if self.eventDict['PlaybackFinished']['status']:
+        #        self.unsubscribe_event('PlaybackFinished')
+        #        break
 
         # step2B - Wait for dtmf input for menu. Choices are 1 and 2
         self.subscribe_event('ChannelDtmfReceived')
-        dtmf = ''
+        digit = ''
         #total_len = 3
         while True:
             time.sleep(0.3)
             if self.eventDict['ChannelDtmfReceived']['status']:
                 digit = self.eventDict['ChannelDtmfReceived']['eventJson']['digit']
                 if digit == '1':
-                    print dtmf
+                    print digit
                     self.unsubscribe_event('ChannelDtmfReceived')
+                    req_str = req_base + ("playbacks/%s" % (id))
+                    requests.delete(req_str, auth=(username, password))
                     #step 2B.1
                     Menu1()
                     break
                 elif digit == '2':
-                    print dtmf
+                    print digit
                     self.unsubscribe_event('ChannelDtmfReceived')
+                    req_str = req_base + ("playbacks/%s" % (id))
+                    requests.delete(req_str, auth=(username, password))
                     #step 2B.2
                     Menu2()
 
@@ -124,6 +305,7 @@ class VNuwakot(threading.Thread):
 
     def end(self, start_time, end_time):
         print 'End of VNuwakot'
+        print self.jsonoutput
         pass
         print '\n\nVSurvey output: ', self.output
         start_time = arrow.get(start_time)
@@ -138,7 +320,5 @@ class VNuwakot(threading.Thread):
         IncomingLog.create(org_id = self.org_id, service = self.service_name, call_start_time = start_time.isoformat(), \
                            call_end_time = end_time.isoformat(), call_duration = duration, completecall = self.playbackCompleted, \
                            incoming_number = self.incoming_number, extension = self.exten)
-        GeneralizedDataIncoming.create(data = self.output, incoming_number = self.incoming_number,\
+        GeneralizedDataIncoming.create(data = self.jsonoutput, incoming_number = self.incoming_number,\
                                        generalized_dialplan = self.module_id)
-
-
