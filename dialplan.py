@@ -12,8 +12,8 @@ from nuwakot import VNuwakot
 
 server_addr = 'localhost'
 app_name = 'hello-world'
-username = 'asterusr'
-password = 'asterusrkopass37'
+username = 'asterisk'
+password = 'asterisk'
 url = "ws://%s:8088/ari/events?app=%s&api_key=%s:%s" % (server_addr, app_name, username, password)
 
 req_base = "http://%s:8088/ari/" % server_addr
@@ -24,18 +24,18 @@ activeCalls = {}
 
 class VBoard(threading.Thread):
 
-    def __init__(self, channel_id, dialplan, incoming_number, module_id, exten, service_name, org_id, allocated_channels, channels_inuse):
+    def __init__(self, **kwargs):
         super(VBoard, self).__init__()
         self.eventDict = {}
-        self.channel_id = channel_id
-        self.dialplan_json = dialplan
-        self.incoming_number = incoming_number
-        self.module_id = module_id
-        self.exten = exten
-        self.service_name = service_name
-        self.org_id = org_id
-        self.allocated_channels = allocated_channels
-        self.channels_inuse = channels_inuse
+        self.channel_id = kwargs['channel_id']
+        self.dialplan_json = kwargs['dialplan']
+        self.incoming_number = kwargs['incoming_number']
+        self.module_id = kwargs['module_id']
+        self.exten = kwargs['exten']
+        self.service_name = kwargs['service_name']
+        self.org_id = kwargs['org_id']
+        self.allocated_channels = kwargs['allocated_channels']
+        self.channels_inuse = kwargs['channels_inuse']
         self.output = {}
         self.playbackCompleted = False
         self.timesRepeated = 0
@@ -108,6 +108,9 @@ class VBoard(threading.Thread):
                     # self.output['timesRepeated'] = self.timesRepeated
                     # break
 
+            self.playbackCompleted = True
+            self.output['playbackCompleted'] = self.playbackCompleted
+
             # dtmf block
             self.subscribe_event('ChannelDtmfReceived')
             while True:
@@ -160,26 +163,28 @@ class VBoard(threading.Thread):
         query = Services.update(channels_inuse = self.channels_inuse).where(Services.extension == self.exten)
         query.execute()
         print self.allocated_channels, self.channels_inuse
+        generalized_data_incoming = GeneralizedDataIncoming.create(data = self.output, incoming_number = self.incoming_number,\
+                                           generalized_dialplan = self.module_id)
+        generalized_data_incoming_id = generalized_data_incoming.id
         IncomingLog.create(org_id = self.org_id, service = self.service_name, call_start_time = start_time.isoformat(), \
                            call_end_time = end_time.isoformat(), call_duration = duration, completecall = self.playbackCompleted, \
-                           incoming_number = str(self.incoming_number), extension = str(self.exten))
-        GeneralizedDataIncoming.create(data = self.output, incoming_number = self.incoming_number,\
-                                       generalized_dialplan = self.module_id)
+                           incoming_number = str(self.incoming_number), extension = str(self.exten), \
+                           generalized_data_incoming = generalized_data_incoming_id)
 
 
 class VSurvey(threading.Thread):
 
-    def __init__(self, channel_id, dialplan, incoming_number, module_id, exten, service_name, org_id, allocated_channels, channels_inuse):
+    def __init__(self, **kwargs):
         super(VSurvey, self).__init__()
         self.eventDict = {}
-        self.channel_id = channel_id
-        self.incoming_number = incoming_number
-        self.module_id = module_id
-        self.service_name = service_name
-        self.org_id = org_id
-        self.exten = exten
-        self.allocated_channels = allocated_channels
-        self.channels_inuse = channels_inuse
+        self.channel_id = kwargs['channel_id']
+        self.incoming_number = kwargs['incoming_number']
+        self.module_id = kwargs['module_id']
+        self.service_name = kwargs['service_name']
+        self.org_id = kwargs['org_id']
+        self.exten = kwargs['exten']
+        self.allocated_channels = kwargs['allocated_channels']
+        self.channels_inuse = kwargs['channels_inuse']
         self.output = {}
         self.playbackCompleted = False
         self.fname = ''
@@ -330,12 +335,13 @@ class VSurvey(threading.Thread):
         query = Services.update(channels_inuse = self.channels_inuse).where(Services.extension == self.exten)
         query.execute()
         print self.allocated_channels, self.channels_inuse
-
+        generalized_data_incoming = GeneralizedDataIncoming.create(data = self.output, incoming_number = self.incoming_number,\
+                                           generalized_dialplan = self.module_id)
+        generalized_data_incoming_id = generalized_data_incoming.id
         IncomingLog.create(org_id = self.org_id, service = self.service_name, call_start_time = start_time.isoformat(), \
                            call_end_time = end_time.isoformat(), call_duration = duration, completecall = self.playbackCompleted, \
-                           incoming_number = self.incoming_number, extension = self.exten)
-        GeneralizedDataIncoming.create(data = self.output, incoming_number = self.incoming_number,\
-                                       generalized_dialplan = self.module_id)
+                           incoming_number = str(self.incoming_number), extension = str(self.exten), \
+                           generalized_data_incoming = generalized_data_incoming_id)
 
 # def simulate(channel_id, exten):
 #     if exten == '1001':
@@ -390,21 +396,26 @@ class VSurvey(threading.Thread):
 #         return VSurvey(channel_id)
 
 def get_dialplan_from_db(channel_id, exten, incoming_number):
+    kwargs = {}
     for service in Services.select().where(Services.extension == str(exten), Services.isactive == True):
-        allocated_channels = service.allocated_channels
-        channels_inuse = service.channels_inuse
         gen_dialplan = GeneralizedDialplan.select().where(GeneralizedDialplan.id == service.service.id)
         service_type = service.service_type.id
-        service_name = service.service_type.name
-        org_id = service.org_id
-        module_id = service.service.id
-        dialplan = gen_dialplan[0].dialplan
+        kwargs['channel_id'] = channel_id
+        kwargs['dialplan'] = gen_dialplan[0].dialplan
+        kwargs['incoming_number'] = incoming_number
+        kwargs['module_id'] = service.service.id
+        kwargs['exten'] = exten
+        kwargs['service_name'] = service.service_type.name
+        kwargs['org_id'] = service.org_id
+        kwargs['allocated_channels'] = service.allocated_channels
+        kwargs['channels_inuse'] = service.channels_inuse
+
         if service_type == 1:
-            return VBoard(channel_id, dialplan, incoming_number, module_id, exten, service_name, org_id, allocated_channels, channels_inuse)
+            return VBoard(**kwargs)
         elif service_type == 2:
-            return VSurvey(channel_id, dialplan, incoming_number, module_id, exten, service_name, org_id, allocated_channels, channels_inuse)
+            return VSurvey(**kwargs)
         elif service_type == 3:
-            return VNuwakot(channel_id, dialplan, incoming_number, module_id, exten, service_name, org_id, allocated_channels, channels_inuse)
+            return VNuwakot(**kwargs)
 
 try:
     for event_str in iter(lambda: ws.recv(), None):

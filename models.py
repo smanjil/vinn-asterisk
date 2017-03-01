@@ -1,7 +1,7 @@
 from peewee import *
 from playhouse.postgres_ext import *
 
-database = PostgresqlDatabase('voiceinndb', **{'user': 'voiceinn'})
+database = PostgresqlDatabase('voiceinndb', **{'user': 'ano'})
 
 class UnknownField(object):
     def __init__(self, *_, **__): pass
@@ -9,6 +9,16 @@ class UnknownField(object):
 class BaseModel(Model):
     class Meta:
         database = database
+
+class Organization(BaseModel):
+    created = DateTimeField(null=True)
+    email = CharField(null=True)
+    location = CharField(null=True)
+    name = CharField(null=True)
+    phone = BigIntegerField(null=True)
+
+    class Meta:
+        db_table = 'organization'
 
 class ServiceType(BaseModel):
     name = CharField(null=True)
@@ -27,11 +37,32 @@ class GeneralizedDialplan(BaseModel):
 class GeneralizedDataIncoming(BaseModel):
     data = JSONField(null=True)
     generalized_dialplan = ForeignKeyField(db_column='generalized_dialplan_id', null=True, rel_model=GeneralizedDialplan, to_field='id')
-    #incoming_number = BigIntegerField(null=True)
     incoming_number = CharField(null=True)
 
     class Meta:
         db_table = 'generalized_data_incoming'
+
+class IncomingLog(BaseModel):
+    call_duration = FloatField(null=True)
+    call_end_time = DateTimeField(null=True)
+    call_start_time = DateTimeField(null=True)
+    completecall = BooleanField(db_column='completeCall', null=True)
+    extension = CharField(null=True)
+    generalized_data_incoming = ForeignKeyField(db_column='generalized_data_incoming_id', null=True, rel_model=GeneralizedDataIncoming, to_field='id')
+    incoming_number = CharField(null=True)
+    org = ForeignKeyField(db_column='org_id', null=True, rel_model=Organization, to_field='id')
+    service = CharField(null=True)
+
+    class Meta:
+        db_table = 'incoming_log'
+
+class Comment(BaseModel):
+    comment = CharField(null=True)
+    log = ForeignKeyField(db_column='log_id', null=True, rel_model=IncomingLog, to_field='id')
+    status = CharField(null=True)
+
+    class Meta:
+        db_table = 'comment'
 
 class GeneralizedDataOutgoing(BaseModel):
     data = JSONField(null=True)
@@ -40,31 +71,6 @@ class GeneralizedDataOutgoing(BaseModel):
 
     class Meta:
         db_table = 'generalized_data_outgoing'
-
-class Organization(BaseModel):
-    created = DateTimeField(null=True)
-    email = CharField(null=True)
-    location = CharField(null=True)
-    name = CharField(null=True)
-    phone = BigIntegerField(null=True)
-
-    class Meta:
-        db_table = 'organization'
-
-class IncomingLog(BaseModel):
-    call_duration = FloatField(null=True)
-    call_end_time = DateTimeField(null=True)
-    call_start_time = DateTimeField(null=True)
-    completecall = BooleanField(db_column='completeCall', null=True)
-    #extension = IntegerField(null=True)
-    extension = CharField(null=True)
-    #incoming_number = BigIntegerField(null=True)
-    incoming_number = CharField(null=True)
-    org = ForeignKeyField(db_column='org_id', null=True, rel_model=Organization, to_field='id')
-    service = CharField(null=True)
-
-    class Meta:
-        db_table = 'incoming_log'
 
 class OutgoingLog(BaseModel):
     call_duration = FloatField(null=True)
@@ -81,7 +87,6 @@ class Services(BaseModel):
     allocated_channels = IntegerField(null=True)
     channels_inuse = IntegerField(null=True)
     created = DateTimeField(null=True)
-    #extension = IntegerField(null=True)
     extension = CharField(null=True)
     isactive = BooleanField(null=True)
     org = ForeignKeyField(db_column='org_id', null=True, rel_model=Organization, to_field='id')
