@@ -52,6 +52,7 @@ class IncomingLog(BaseModel):
     incoming_number = CharField(null=True)
     org = ForeignKeyField(db_column='org_id', null=True, rel_model=Organization, to_field='id')
     service = CharField(null=True)
+    status = CharField(null=True)
 
     class Meta:
         db_table = 'incoming_log'

@@ -169,7 +169,7 @@ class VBoard(threading.Thread):
         IncomingLog.create(org_id = self.org_id, service = self.service_name, call_start_time = start_time.isoformat(), \
                            call_end_time = end_time.isoformat(), call_duration = duration, completecall = self.playbackCompleted, \
                            incoming_number = str(self.incoming_number), extension = str(self.exten), \
-                           generalized_data_incoming = generalized_data_incoming_id)
+                           generalized_data_incoming = generalized_data_incoming_id, status='unsolved')
 
 
 class VSurvey(threading.Thread):
@@ -341,7 +341,7 @@ class VSurvey(threading.Thread):
         IncomingLog.create(org_id = self.org_id, service = self.service_name, call_start_time = start_time.isoformat(), \
                            call_end_time = end_time.isoformat(), call_duration = duration, completecall = self.playbackCompleted, \
                            incoming_number = str(self.incoming_number), extension = str(self.exten), \
-                           generalized_data_incoming = generalized_data_incoming_id)
+                           generalized_data_incoming = generalized_data_incoming_id, status='unsolved')
 
 # def simulate(channel_id, exten):
 #     if exten == '1001':
@@ -424,8 +424,16 @@ try:
 
         if event_json['type'] == 'StasisStart':
             channel_id = event_json['channel']['id']
-            exten = event_json['channel']['dialplan']['exten']
-            incoming_number = event_json['channel']['caller']['number']
+            if event_json['args']:
+                print event_json['args']
+                exten = event_json['args'][0].split()[1]
+                call_direction = 'outgoing'
+                incoming_number = 'out ' + event_json['args'][0].split()[2]
+            else:
+                exten = event_json['channel']['dialplan']['exten']
+                incoming_number = event_json['channel']['caller']['number']
+                call_direction = 'incoming'
+
             if channel_id not in activeCalls:
                 # activeCalls[channel_id] = simulate(channel_id, exten)
                 activeCalls[channel_id] = get_dialplan_from_db(channel_id, exten, incoming_number)

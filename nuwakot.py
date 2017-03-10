@@ -325,4 +325,4 @@ class VNuwakot(threading.Thread):
         generalized_data_incoming_id = generalized_data_incoming.id
         IncomingLog.create(org_id = self.org_id, service = self.service_name, call_start_time = start_time.isoformat(), \
                            call_end_time = end_time.isoformat(), call_duration = duration, completecall = self.playbackCompleted, \
-                           incoming_number = self.incoming_number, extension = self.exten, generalized_data_incoming = generalized_data_incoming_id)
+                           incoming_number = self.incoming_number, extension = self.exten, generalized_data_incoming = generalized_data_incoming_id, status='unsolved')
