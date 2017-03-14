@@ -2,7 +2,7 @@
 from config import app, db
 from flask_migrate import Migrate, MigrateCommand
 from flask_script import Manager
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, backref
 from sqlalchemy.dialects.postgresql import JSON
 
 migrate = Migrate(app, db)
@@ -88,9 +88,11 @@ class IncomingLog(db.Model):
     incoming_number = db.Column(db.Integer)
     extension = db.Column(db.Integer)
     status = db.Column(db.String(100))
-    generalized_data_incoming = db.Column(db.Integer)
+    generalized_data_incoming = db.Column(db.Integer, db.ForeignKey('generalized_data_incoming.id'))
 
     org_ids = relationship('Organization', foreign_keys='IncomingLog.org_id')
+    generalized_data_incomings = relationship('GeneralizedDataIncoming', foreign_keys='IncomingLog.generalized_data_incoming')
+    comments = relationship('Comment', backref=backref("IncomingLog", lazy="joined"))
 
 
 class OutgoingLog(db.Model):

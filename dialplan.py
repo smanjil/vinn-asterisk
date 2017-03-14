@@ -7,6 +7,7 @@ import threading
 import time
 import uuid
 import arrow
+import os
 from model import GeneralizedDialplan, Service, GeneralizedDataIncoming, IncomingLog
 from nuwakot import VNuwakot
 from websocket_connection import server_addr, app_name, username, password, req_base, ws
@@ -342,6 +343,16 @@ class VSurvey(threading.Thread):
                            generalized_data_incoming = generalized_data_incoming_id, status='unsolved')
         db.session.add(il)
         db.session.commit()
+
+        ######## moving recorded files #################
+        source_files = '/var/spool/asterisk/recording/'
+        destination_files = '/home/ano/voiceinn/voiceinn-web/static/'
+
+        files = os.listdir(source_files)
+        for f in files:
+            src_fullpath = source_files + "/" + f
+            dest_fullpath = destination_files + "/" + f
+            os.system("mv " + src_fullpath + " " + dest_fullpath)
 
 # def simulate(channel_id, exten):
 #     if exten == '1001':
