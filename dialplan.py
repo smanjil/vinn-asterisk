@@ -1,5 +1,5 @@
 
-
+from config import db
 import requests
 import websocket
 import json
@@ -7,18 +7,9 @@ import threading
 import time
 import uuid
 import arrow
-from models import GeneralizedDialplan, Services, GeneralizedDataIncoming, IncomingLog
+from model import GeneralizedDialplan, Service, GeneralizedDataIncoming, IncomingLog
 from nuwakot import VNuwakot
-
-server_addr = 'localhost'
-app_name = 'hello-world'
-username = 'asterisk'
-password = 'asterisk'
-url = "ws://%s:8088/ari/events?app=%s&api_key=%s:%s" % (server_addr, app_name, username, password)
-
-req_base = "http://%s:8088/ari/" % server_addr
-
-ws = websocket.create_connection(url)
+from websocket_connection import server_addr, app_name, username, password, req_base, ws
 
 activeCalls = {}
 
@@ -51,8 +42,9 @@ class VBoard(threading.Thread):
             a = requests.post(req_str, auth=(username, password))
             if a.status_code == 204:
                 self.channels_inuse += 1
-                query = Services.update(channels_inuse = self.channels_inuse).where(Services.extension == self.exten)
-                query.execute()
+                query = Service.query.filter(Service.extension == self.exten)
+                query[0].channels_inuse = self.channels_inuse
+                db.session.commit()
                 print self.allocated_channels, self.channels_inuse
         else:
             # hang up
@@ -160,16 +152,20 @@ class VBoard(threading.Thread):
         duration = (end_time - start_time).total_seconds()
 
         self.channels_inuse -= 1
-        query = Services.update(channels_inuse = self.channels_inuse).where(Services.extension == self.exten)
-        query.execute()
+        query = Service.query.filter(Service.extension == self.exten)
+        query[0].channels_inuse = self.channels_inuse
         print self.allocated_channels, self.channels_inuse
-        generalized_data_incoming = GeneralizedDataIncoming.create(data = self.output, incoming_number = self.incoming_number,\
-                                           generalized_dialplan = self.module_id)
+        generalized_data_incoming = GeneralizedDataIncoming(data = self.output, incoming_number = self.incoming_number,\
+                                           generalized_dialplan_id = self.module_id)
+        db.session.add(generalized_data_incoming)
+        db.session.commit()
         generalized_data_incoming_id = generalized_data_incoming.id
-        IncomingLog.create(org_id = self.org_id, service = self.service_name, call_start_time = start_time.isoformat(), \
-                           call_end_time = end_time.isoformat(), call_duration = duration, completecall = self.playbackCompleted, \
+        il = IncomingLog(org_id = self.org_id, service = self.service_name, call_start_time = start_time.isoformat(), \
+                           call_end_time = end_time.isoformat(), call_duration = duration, complete = self.playbackCompleted, \
                            incoming_number = str(self.incoming_number), extension = str(self.exten), \
                            generalized_data_incoming = generalized_data_incoming_id, status='unsolved')
+        db.session.add(il)
+        db.session.commit()
 
 
 class VSurvey(threading.Thread):
@@ -195,8 +191,8 @@ class VSurvey(threading.Thread):
             a = requests.post(req_str, auth=(username, password))
             if a.status_code == 204:
                 self.channels_inuse += 1
-                query = Services.update(channels_inuse = self.channels_inuse).where(Services.extension == self.exten)
-                query.execute()
+                query = Service.query.filter(Service.extension == self.exten)
+                query[0].channels_inuse = self.channels_inuse
                 print self.allocated_channels, self.channels_inuse
         else:
             # hang up
@@ -332,16 +328,20 @@ class VSurvey(threading.Thread):
         duration = (end_time - start_time).total_seconds()
 
         self.channels_inuse -= 1
-        query = Services.update(channels_inuse = self.channels_inuse).where(Services.extension == self.exten)
-        query.execute()
+        query = Service.query.filter(Service.extension == self.exten)
+        query[0].channels_inuse = self.channels_inuse
         print self.allocated_channels, self.channels_inuse
-        generalized_data_incoming = GeneralizedDataIncoming.create(data = self.output, incoming_number = self.incoming_number,\
-                                           generalized_dialplan = self.module_id)
+        generalized_data_incoming = GeneralizedDataIncoming(data = self.output, incoming_number = self.incoming_number,\
+                                           generalized_dialplan_id = self.module_id)
+        db.session.add(generalized_data_incoming)
+        db.session.commit()
         generalized_data_incoming_id = generalized_data_incoming.id
-        IncomingLog.create(org_id = self.org_id, service = self.service_name, call_start_time = start_time.isoformat(), \
-                           call_end_time = end_time.isoformat(), call_duration = duration, completecall = self.playbackCompleted, \
+        il = IncomingLog(org_id = self.org_id, service = self.service_name, call_start_time = start_time.isoformat(), \
+                           call_end_time = end_time.isoformat(), call_duration = duration, complete = self.playbackCompleted, \
                            incoming_number = str(self.incoming_number), extension = str(self.exten), \
                            generalized_data_incoming = generalized_data_incoming_id, status='unsolved')
+        db.session.add(il)
+        db.session.commit()
 
 # def simulate(channel_id, exten):
 #     if exten == '1001':
@@ -397,15 +397,15 @@ class VSurvey(threading.Thread):
 
 def get_dialplan_from_db(channel_id, exten, incoming_number):
     kwargs = {}
-    for service in Services.select().where(Services.extension == str(exten), Services.isactive == True):
-        gen_dialplan = GeneralizedDialplan.select().where(GeneralizedDialplan.id == service.service.id)
-        service_type = service.service_type.id
+    for service in Service.query.filter(Service.extension == str(exten) and Service.isActive == True):
+        gen_dialplan = GeneralizedDialplan.query.filter(GeneralizedDialplan.id == service.service_id)
+        service_type = service.service_types.id
         kwargs['channel_id'] = channel_id
         kwargs['dialplan'] = gen_dialplan[0].dialplan
         kwargs['incoming_number'] = incoming_number
-        kwargs['module_id'] = service.service.id
+        kwargs['module_id'] = service.service_id
         kwargs['exten'] = exten
-        kwargs['service_name'] = service.service_type.name
+        kwargs['service_name'] = service.service_types.name
         kwargs['org_id'] = service.org_id
         kwargs['allocated_channels'] = service.allocated_channels
         kwargs['channels_inuse'] = service.channels_inuse

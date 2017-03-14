@@ -1,19 +1,13 @@
-# vim: tabstop=8 expandtab shiftwidth=4 softtabstop=4
 
+from config import db
 import requests
 import websocket
 import threading
 import time
 import uuid
 import arrow
-from models import Services, GeneralizedDataIncoming, IncomingLog
-
-server_addr = 'localhost'
-app_name = 'hello-world'
-username = 'asterisk'
-password = 'asterisk'
-req_base = "http://%s:8088/ari/" % server_addr
-
+from model import Service, GeneralizedDataIncoming, IncomingLog
+from websocket_connection import server_addr, app_name, username, password, req_base, ws
 
 class VNuwakot(threading.Thread):
     def __init__(self, **kwargs):
@@ -41,8 +35,8 @@ class VNuwakot(threading.Thread):
             a = requests.post(req_str, auth=(username, password))
             if a.status_code == 204:
                 self.channels_inuse += 1
-                query = Services.update(channels_inuse = self.channels_inuse).where(Services.extension == self.exten)
-                query.execute()
+                query = Service.query.filter(Service.extension == self.exten)
+                query[0].channels_inuse = self.channels_inuse
                 print self.allocated_channels, self.channels_inuse
         else:
             # hang up
@@ -316,13 +310,17 @@ class VNuwakot(threading.Thread):
         duration = (end_time - start_time).total_seconds()
 
         self.channels_inuse -= 1
-        query = Services.update(channels_inuse = self.channels_inuse).where(Services.extension == self.exten)
-        query.execute()
+        query = Service.query.filter(Service.extension == self.exten)
+        query[0].channels_inuse = self.channels_inuse
         print self.allocated_channels, self.channels_inuse
 
-        generalized_data_incoming = GeneralizedDataIncoming.create(data = self.jsonoutput, incoming_number = self.incoming_number,\
-                                       generalized_dialplan = self.module_id)
+        generalized_data_incoming = GeneralizedDataIncoming(data = self.jsonoutput, incoming_number = self.incoming_number,\
+                                       generalized_dialplan_id = self.module_id)
+        db.session.add(generalized_data_incoming)
+        db.session.commit()
         generalized_data_incoming_id = generalized_data_incoming.id
-        IncomingLog.create(org_id = self.org_id, service = self.service_name, call_start_time = start_time.isoformat(), \
-                           call_end_time = end_time.isoformat(), call_duration = duration, completecall = self.playbackCompleted, \
+        il = IncomingLog(org_id = self.org_id, service = self.service_name, call_start_time = start_time.isoformat(), \
+                           call_end_time = end_time.isoformat(), call_duration = duration, complete = self.playbackCompleted, \
                            incoming_number = self.incoming_number, extension = self.exten, generalized_data_incoming = generalized_data_incoming_id, status='unsolved')
+        db.session.add(il)
+        db.session.commit()
