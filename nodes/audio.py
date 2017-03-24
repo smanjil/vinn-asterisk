@@ -7,7 +7,7 @@ import uuid
 class AudioNode(object):
     def __init__(self, obj, **kwargs):
         self.kwargs = kwargs
-        self.vboard_obj = obj
+        self.obj = obj
 
 
     def play_audio(self, blocking, audio):
@@ -18,18 +18,18 @@ class AudioNode(object):
 
 
     def play_blocking_audio(self, audio):
-        self.vboard_obj.subscribe_event('PlaybackFinished')
+        self.obj.subscribe_event('PlaybackFinished')
 
         id = uuid.uuid1()
-        self.vboard_obj.uuids.append(id)
+        self.obj.uuids.append(id)
 
         req_str = self.kwargs['req_base'] + ('channels/%s/play/%s?media=sound:%s' % (self.kwargs['channel_id'], id, audio))
         requests.post(req_str, auth=(self.kwargs['username'], self.kwargs['password']))
 
         while True:
             time.sleep(0.3)
-            if self.vboard_obj.eventDict['PlaybackFinished']['status']:
-                self.vboard_obj.unsubscribe_event('PlaybackFinished')
+            if self.obj.eventDict['PlaybackFinished']['status']:
+                self.obj.unsubscribe_event('PlaybackFinished')
                 break
 
         return {'PlaybackFinished': True}
@@ -38,7 +38,7 @@ class AudioNode(object):
     def play_nonblocking_audio(self, audio):
         for sound in audio:
             id = uuid.uuid1()
-            self.vboard_obj.uuids.append(id)
+            self.obj.uuids.append(id)
 
             req_str = self.kwargs['req_base'] + ('channels/%s/play/%s?media=sound:%s' % (self.kwargs['channel_id'], id, sound))
             requests.post(req_str, auth=(self.kwargs['username'], self.kwargs['password']))

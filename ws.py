@@ -5,6 +5,7 @@ sys.path.append('/home/ano/voiceinn/voiceinn-asterisk/')
 import websocket
 import json
 from vboard import VBoard
+from vsurvey import VSurvey
 from model import Service, GeneralizedDialplan
 
 server_addr = 'localhost'
