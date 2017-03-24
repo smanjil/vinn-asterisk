@@ -1,12 +1,13 @@
 
 import threading
+import arrow
 from nodes.answer import AnswerNode
 from nodes.hangup import HangupNode
 from nodes.audio import AudioNode
 from nodes.record import RecordNode
 from nodes.dtmf import DtmfNode
 from log import Log
-from model import Service
+from model import Service, GeneralizedDataIncoming, IncomingLog
 from config import db
 import os
 
@@ -22,6 +23,18 @@ class VSurvey(threading.Thread):
             'recordedFileName1': '',
             'dtmf' : ''
         }
+        # set database row with default value (initialize row)
+        self.generalized_data_incoming = GeneralizedDataIncoming(data=self.output, incoming_number=self.kwargs['incoming_number'], \
+                                                            generalized_dialplan_id=self.kwargs['module_id'])
+        db.session.add(self.generalized_data_incoming)
+        db.session.commit()
+        self.generalized_data_incoming_id = self.generalized_data_incoming.id
+        self.il = IncomingLog(org_id=self.kwargs['org_id'], service=self.kwargs['service_name'], call_start_time='2017-03-24 16:34:23', \
+                         call_end_time='2017-03-24 16:34:23', call_duration=0.0, complete=self.output['surveyCompleted'], \
+                         incoming_number=str(self.kwargs['incoming_number']), extension=str(self.kwargs['exten']), \
+                         generalized_data_incoming=self.generalized_data_incoming_id, status='unsolved')
+        db.session.add(self.il)
+        db.session.commit()
 
 
     def run(self):
@@ -51,7 +64,7 @@ class VSurvey(threading.Thread):
         # record application
         record = RecordNode(self, **self.kwargs)
         fname = record.start_record()
-        self.output['recordedFileName1'] = fname
+        self.output['recordedFileName1'] = str(fname)
 
         # question2
         self.stat3 = audio.play_audio(blocking = False, audio = ['2002_vs_030_question2'])
@@ -62,7 +75,12 @@ class VSurvey(threading.Thread):
         # dtmf_digit = dtmf.get_multiple_dtmf(length = 5)
         self.output['dtmf'] = dtmf_digit
 
-        print 'Done!'
+        # thank you message
+        audio.play_audio(blocking = True, audio = '2002_vs_040_endmsg')
+
+        # hangup
+        hangup = HangupNode(**self.kwargs)
+        hangup.hang_up()
 
 
     def event(self, event_json):
@@ -88,6 +106,10 @@ class VSurvey(threading.Thread):
 
 
     def end(self, start_time, end_time):
+        start_time = arrow.get(start_time)
+        end_time = arrow.get(end_time)
+        duration = (end_time - start_time).total_seconds()
+
         if self.kwargs['channels_inuse'] > 0:
             self.kwargs['channels_inuse'] -= 1
             query = Service.query.filter(Service.extension == self.kwargs['exten'])
@@ -100,6 +122,17 @@ class VSurvey(threading.Thread):
         # print start_time, end_time
         # print '\nOutput: ', self.output
         Log(self.output)
+
+        # update records in database
+        self.generalized_data_incoming.data = self.output
+        db.session.commit()
+
+        self.il.call_start_time = start_time.isoformat()
+        self.il.call_end_time = end_time.isoformat()
+        self.il.call_duration = duration
+        self.il.complete = self.output['surveyCompleted']
+        self.il.generalized_dialplan_id = self.generalized_data_incoming_id
+        db.session.commit()
 
         ######## moving recorded files #################
         source_files = '/var/spool/asterisk/recording/'
