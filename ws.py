@@ -6,6 +6,7 @@ import websocket
 import json
 from vboard import VBoard
 from vsurvey import VSurvey
+from vnuwakot import VNuwakot
 from model import Service, GeneralizedDialplan
 
 server_addr = 'localhost'
