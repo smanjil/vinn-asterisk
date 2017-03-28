@@ -9,7 +9,7 @@ from nodes.dtmf import DtmfNode
 from log import Log
 from model import Service, GeneralizedDataIncoming, IncomingLog
 from config import db
-import os
+from utilities import utils
 
 
 class VSurvey(threading.Thread):
@@ -23,6 +23,7 @@ class VSurvey(threading.Thread):
             'recordedFileName1': '',
             'dtmf' : ''
         }
+        self.fnames = []
         # set database row with default value (initialize row)
         self.generalized_data_incoming = GeneralizedDataIncoming(data=self.output, incoming_number=self.kwargs['incoming_number'], \
                                                             generalized_dialplan_id=self.kwargs['module_id'])
@@ -64,6 +65,7 @@ class VSurvey(threading.Thread):
         # record application
         record = RecordNode(self, **self.kwargs)
         fname = record.start_record()
+        self.fnames.append(str(fname))
         self.output['recordedFileName1'] = str(fname)
 
         # question2
@@ -135,11 +137,4 @@ class VSurvey(threading.Thread):
         db.session.commit()
 
         ######## moving recorded files #################
-        source_files = '/var/spool/asterisk/recording/'
-        destination_files = '/home/ano/voiceinn/voiceinn-web/static/'
-
-        files = os.listdir(source_files)
-        for f in files:
-            src_fullpath = source_files + "/" + f
-            dest_fullpath = destination_files + "/" + f
-            os.system("mv " + src_fullpath + " " + dest_fullpath)
+        utils.move_files(self.fnames)

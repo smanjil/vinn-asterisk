@@ -9,6 +9,7 @@ from nodes.record import RecordNode
 from log import Log
 from model import Service, GeneralizedDataIncoming, IncomingLog
 from config import db
+from utilities import utils
 
 
 class VNuwakot(threading.Thread):
@@ -26,6 +27,7 @@ class VNuwakot(threading.Thread):
             },
             'completed': False
         }
+        self.fnames = []
         # set database row with default value (initialize row)
         self.generalized_data_incoming = GeneralizedDataIncoming(data=self.output, incoming_number=self.kwargs['incoming_number'], \
                                                             generalized_dialplan_id=self.kwargs['module_id'])
@@ -36,7 +38,6 @@ class VNuwakot(threading.Thread):
                          call_end_time='2017-03-24 16:34:23', call_duration=0.0, complete=self.output['completed'], \
                          incoming_number=str(self.kwargs['incoming_number']), extension=str(self.kwargs['exten']), \
                          generalized_data_incoming=self.generalized_data_incoming_id, status='unsolved')
-        print self.il
         db.session.add(self.il)
         db.session.commit()
 
@@ -89,6 +90,7 @@ class VNuwakot(threading.Thread):
             # record application
             record = RecordNode(self, **self.kwargs)
             fname = record.start_record()
+            self.fnames.append(str(fname))
 
             # log
             self.output['vsurvey']['status'] = True
@@ -116,6 +118,7 @@ class VNuwakot(threading.Thread):
             # record application
             record = RecordNode(self, **self.kwargs)
             fname = record.start_record()
+            self.fnames.append(str(fname))
 
             # log
             self.output['vsurvey']['msg_audio'] = str(fname)
@@ -207,3 +210,6 @@ class VNuwakot(threading.Thread):
         self.il.complete = self.output['completed']
         self.il.generalized_dialplan_id = self.generalized_data_incoming_id
         db.session.commit()
+
+        ############## moving recorded files ##############
+        utils.move_files(self.fnames)
