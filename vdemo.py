@@ -185,6 +185,9 @@ class VDemo(threading.Thread):
             # thank you for taking the survey
             self.audio.play_audio(blocking = True, audio = 'thanku-survey-{0}' .format(self.language))
 
+            # beep
+            self.beep = self.audio.play_audio(blocking = True, audio = 'beep.wav')
+
         # repeater message
         digit = self.repeater(audio = 'vsurvey-repeater-{0}.wav' .format(self.language))
 
@@ -195,6 +198,60 @@ class VDemo(threading.Thread):
 
             # play redirection messsage
             self.audio.play_audio(blocking = True, audio = 'vsurvey-conclusion-{0}.wav' .format(self.language))
+
+            # redirect to the main menu after vsurvey demo is completed
+            self.menu()
+    
+
+    def vreport(self, audio):
+        audio_name = audio
+
+        # play description audio
+        self.vreport_description = self.audio.play_audio(blocking = True, audio = audio_name)
+
+
+        # vreport demo
+        def vreport_demo():
+            # beep
+            self.beep = self.audio.play_audio(blocking = True, audio = 'beep.wav')
+
+            # vreport welcome message
+            self.report_welcome = self.audio.play_audio(blocking = True, audio = 'vreport-welcome-{0}.wav' .format(self.language))
+
+            # question1
+            self.question1 = self.audio.play_audio(blocking = True, audio = 'vreport-q1-{0}.wav' .format(self.language))
+
+            # record for question1
+            self.name = self.record.start_record()
+
+            # question2
+            self.question2 = self.audio.play_audio(blocking = True, audio = 'vreport-q2-{0}.wav' .format(self.language))
+
+            # record for question2
+            self.problem = self.record.start_record()
+
+            # question3
+            self.question3 = self.audio.play_audio(blocking = False, audio = 'vreport-q3-{0}.wav' .format(self.language))
+
+            # wait for dtmf input for question3
+            self.digit = self.dtmf.get_dtmf()
+
+            # response message
+            self.audio.play_audio(blocking = True, audio = 'vreport-response-{0}.wav' .format(self.language))
+
+            # beep
+            self.beep = self.audio.play_audio(blocking = True, audio = 'beep.wav')
+
+        # repeater message
+        digit = self.repeater(audio = 'vreport-repeater-{0}.wav' .format(self.language))
+
+        if digit == '2':
+            vreport_demo()        
+            
+            time.sleep(1)
+
+            # play redirection messsage
+            self.audio.play_audio(blocking = True, audio = 'vreport-conclusion-{0}.wav' .format(self.language))
 
             # redirect to the main menu after vsurvey demo is completed
             self.menu()
@@ -218,7 +275,7 @@ class VDemo(threading.Thread):
                 break
             elif dtmf_digit == '3':
                 # vreport service selected
-                pass
+                self.vreport(audio = 'vreport-desc-{0}.wav' .format(self.language))
                 break
             elif dtmf_digit == '4':
                 # vsupport service selected
