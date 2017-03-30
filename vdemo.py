@@ -52,12 +52,22 @@ class VDemo(threading.Thread):
             if dtmf_digit == '1':
                 # repeat the description
                 self.repeater(audio_name)
+                break
             elif dtmf_digit == '2':
                 # demo
                 return dtmf_digit
+                break
             elif dtmf_digit == '3':
                 # go back to main menu
                 self.menu()
+                break
+    
+
+    def response(self, audio):
+        audio_name = audio
+
+        # play response message after each question's answer is received
+        self.audio.play_audio(blocking = True, audio = audio_name)
 
 
     def vboard(self, audio):
@@ -85,19 +95,110 @@ class VDemo(threading.Thread):
                 if dtmf_digit == '*':
                     # repeat the noticeboard description
                     vboard_demo()
+                    break
                 elif dtmf_digit == '#':
                     # go back to the main menu
-                    self.menu()             
+                    self.menu()
+                    break             
 
             # beep
             self.beep = self.audio.play_audio(blocking = True, audio = 'beep.wav')
 
-            # repeater message
-            digit = self.repeater(audio = 'vboard-repeater-{0}.wav' .format(self.language))
+        # repeater message
+        digit = self.repeater(audio = 'vboard-repeater-{0}.wav' .format(self.language))
 
         if digit == '2':
             vboard_demo()
+
     
+    def vsurvey(self, audio):
+        audio_name = audio
+
+        # play description audio
+        self.vsurvey_description = self.audio.play_audio(blocking = True, audio = audio_name)
+
+
+        # vsurvey demo
+        def vsurvey_demo():
+            # beep
+            self.beep = self.audio.play_audio(blocking = True, audio = 'beep.wav')
+
+            # survey welcome
+            self.survey_welcome = self.audio.play_audio(blocking = True, audio = 'vsurvey-welcome-{0}.wav' .format(self.language))
+
+            # question 1
+            self.question1 = self.audio.play_audio(blocking = True, audio = 'vsurvey-q1-{0}.wav' .format(self.language))
+
+            # record for question 1
+            self.name = self.record.start_record()
+
+            # response
+            self.response(audio = 'response-{0}' .format(self.language))
+
+            # question2
+            self.question2 = self.audio.play_audio(blocking = False, audio = 'vsurvey-q2-{0}.wav' .format(self.language))
+
+            # wait for dtmf to get age
+            self.age = self.dtmf.get_multiple_dtmf(length = 2)
+
+            # response
+            self.response(audio = 'response-{0}' .format(self.language))
+
+            # question3
+            self.question3 = self.audio.play_audio(blocking = False, audio = 'vsurvey-q3-{0}.wav' .format(self.language))
+
+            # wait for dtmf to get the caller's gender
+            digit = self.dtmf.get_dtmf()
+            while digit:
+                time.sleep(0.3)
+                if digit == '1':
+                    self.gender = 'Female'
+                    break
+                elif digit == '2':
+                    self.gender = 'Male'
+                    break
+                elif digit == '3':
+                    self.gender = 'Others'
+                    break
+            
+            # response
+            self.response(audio = 'response-{0}' .format(self.language))
+            
+            # question4
+            self.question4 = self.audio.play_audio(blocking = True, audio = 'vsurvey-q4-{0}.wav' .format(self.language))
+
+            # record for question 4
+            self.message = self.record.start_record()
+
+            # response
+            self.response(audio = 'response-{0}' .format(self.language))
+
+            # question5
+            self.question5 = self.audio.play_audio(blocking = True, audio = 'vsurvey-q5-{0}.wav' .format(self.language))
+
+            # record for question 5
+            self.solution = self.record.start_record()
+
+            # response
+            self.response(audio = 'response-{0}' .format(self.language))
+
+            # thank you for taking the survey
+            self.audio.play_audio(blocking = True, audio = 'thanku-survey-{0}' .format(self.language))
+
+        # repeater message
+        digit = self.repeater(audio = 'vsurvey-repeater-{0}.wav' .format(self.language))
+
+        if digit == '2':
+            vsurvey_demo()        
+            
+            time.sleep(1)
+
+            # play redirection messsage
+            self.audio.play_audio(blocking = True, audio = 'vsurvey-conclusion-{0}.wav' .format(self.language))
+
+            # redirect to the main menu after vsurvey demo is completed
+            self.menu()
+
 
     def menu(self):
         # play menu audio
@@ -110,24 +211,31 @@ class VDemo(threading.Thread):
             if dtmf_digit == '1':
                 # vboard service selected
                 self.vboard(audio = 'vboard-desc-{0}.wav' .format(self.language))
+                break
             elif dtmf_digit == '2':
                 # vsurvey service selected
-                pass
+                self.vsurvey(audio = 'vsurvey-desc-{0}.wav' .format(self.language))
+                break
             elif dtmf_digit == '3':
                 # vreport service selected
                 pass
+                break
             elif dtmf_digit == '4':
                 # vsupport service selected
                 pass
+                break
             elif dtmf_digit == '5':
                 # vbroadcast service selected
                 pass
+                break
             elif dtmf_digit == '*':
                 # chosen to repeat the menu
                 pass
+                break
             elif dtmf_digit == '#':
                 # chosen to hangup
                 pass
+                break
 
     
     def nepali(self):
@@ -175,9 +283,11 @@ class VDemo(threading.Thread):
             if dtmf_digit == '1':
                 # chosen nepali language option
                 self.nepali()
+                break
             elif dtmf_digit == '2':
                 # chosen english language option
                 self.english()
+                break
     
 
     def event(self, event_json):
