@@ -57,10 +57,10 @@ class VSurvey(threading.Thread):
         audio = AudioNode(self, **self.kwargs)
 
         # welcome message
-        self.stat1 = audio.play_audio(blocking = True, audio = '2002_vs_010_welcome')
+        self.stat1 = audio.play_audio(blocking = True, audio = ['2002_vs_010_welcome'])
 
         # question1
-        self.stat2 = audio.play_audio(blocking = True, audio = '2002_vs_020_question1')
+        self.stat2 = audio.play_audio(blocking = True, audio = ['2002_vs_020_question1'])
 
         # record application
         record = RecordNode(self, **self.kwargs)
@@ -78,7 +78,7 @@ class VSurvey(threading.Thread):
         self.output['dtmf'] = dtmf_digit
 
         # thank you message
-        audio.play_audio(blocking = True, audio = '2002_vs_040_endmsg')
+        audio.play_audio(blocking = True, audio = ['2002_vs_040_endmsg'])
 
         # hangup
         hangup = HangupNode(**self.kwargs)

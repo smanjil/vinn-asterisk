@@ -10,6 +10,7 @@ from nodes.record import RecordNode
 from log import Log
 from model import Service, GeneralizedDataIncoming, IncomingLog
 from config import db
+from utilities import utils
 
 
 class VDemo(threading.Thread):
@@ -82,13 +83,13 @@ class VDemo(threading.Thread):
         # vboard demo
         def vboard_demo():
             # beep
-            self.beep = self.audio.play_audio(blocking = True, audio = 'beep.wav')
+            self.beep = self.audio.play_audio(blocking = True, audio = ['beep.wav'])
 
             # noticeboard description
-            self.noticeboard_description = self.audio.play_audio(blocking = True, audio = 'noticeboard-desc-{0}.wav' .format(self.language))
+            self.noticeboard_description = self.audio.play_audio(blocking = True, audio = ['noticeboard-desc-{0}.wav' .format(self.language)])
 
             # repeater message
-            self.demo_repeat = self.audio.play_audio(blocking = False, audio = 'repeater-english.{0}' .format(self.language))
+            self.demo_repeat = self.audio.play_audio(blocking = False, audio = ['repeater-english.{0}' .format(self.language)])
 
             # wait for dtmf input
             dtmf_digit = self.dtmf.get_dtmf()
@@ -104,10 +105,10 @@ class VDemo(threading.Thread):
                     break             
 
             # beep
-            self.beep = self.audio.play_audio(blocking = True, audio = 'beep.wav')
+            self.beep = self.audio.play_audio(blocking = True, audio = ['beep.wav'])
 
         # repeater message
-        digit = self.repeater(audio = 'vboard-repeater-{0}.wav' .format(self.language))
+        digit = self.repeater(audio = ['vboard-repeater-{0}.wav' .format(self.language)])
 
         if digit == '2':
             # vboard demo
@@ -124,31 +125,31 @@ class VDemo(threading.Thread):
         # vsurvey demo
         def vsurvey_demo():
             # beep
-            self.beep = self.audio.play_audio(blocking = True, audio = 'beep.wav')
+            self.beep = self.audio.play_audio(blocking = True, audio = ['beep.wav'])
 
             # survey welcome
-            self.survey_welcome = self.audio.play_audio(blocking = True, audio = 'vsurvey-welcome-{0}.wav' .format(self.language))
+            self.survey_welcome = self.audio.play_audio(blocking = True, audio = ['vsurvey-welcome-{0}.wav' .format(self.language)])
 
             # question 1
-            self.question1 = self.audio.play_audio(blocking = True, audio = 'vsurvey-q1-{0}.wav' .format(self.language))
+            self.question1 = self.audio.play_audio(blocking = True, audio = ['vsurvey-q1-{0}.wav' .format(self.language)])
 
             # record for question 1
             self.name = self.record.start_record()
 
             # response
-            self.response(audio = 'response-{0}' .format(self.language))
+            self.response(audio = ['response-{0}' .format(self.language)])
 
             # question2
-            self.question2 = self.audio.play_audio(blocking = False, audio = 'vsurvey-q2-{0}.wav' .format(self.language))
+            self.question2 = self.audio.play_audio(blocking = False, audio = ['vsurvey-q2-{0}.wav' .format(self.language)])
 
             # wait for dtmf to get age
             self.age = self.dtmf.get_multiple_dtmf(length = 2)
 
             # response
-            self.response(audio = 'response-{0}' .format(self.language))
+            self.response(audio = ['response-{0}' .format(self.language)])
 
             # question3
-            self.question3 = self.audio.play_audio(blocking = False, audio = 'vsurvey-q3-{0}.wav' .format(self.language))
+            self.question3 = self.audio.play_audio(blocking = False, audio = ['vsurvey-q3-{0}.wav' .format(self.language)])
 
             # wait for dtmf to get the caller's gender
             digit = self.dtmf.get_dtmf()
@@ -165,34 +166,34 @@ class VDemo(threading.Thread):
                     break
             
             # response
-            self.response(audio = 'response-{0}' .format(self.language))
+            self.response(audio = ['response-{0}' .format(self.language)])
             
             # question4
-            self.question4 = self.audio.play_audio(blocking = True, audio = 'vsurvey-q4-{0}.wav' .format(self.language))
+            self.question4 = self.audio.play_audio(blocking = True, audio = ['vsurvey-q4-{0}.wav' .format(self.language)])
 
             # record for question 4
             self.message = self.record.start_record()
 
             # response
-            self.response(audio = 'response-{0}' .format(self.language))
+            self.response(audio = ['response-{0}' .format(self.language)])
 
             # question5
-            self.question5 = self.audio.play_audio(blocking = True, audio = 'vsurvey-q5-{0}.wav' .format(self.language))
+            self.question5 = self.audio.play_audio(blocking = True, audio = ['vsurvey-q5-{0}.wav' .format(self.language)])
 
             # record for question 5
             self.solution = self.record.start_record()
 
             # response
-            self.response(audio = 'response-{0}' .format(self.language))
+            self.response(audio = ['response-{0}' .format(self.language)])
 
             # thank you for taking the survey
-            self.audio.play_audio(blocking = True, audio = 'thanku-survey-{0}' .format(self.language))
+            self.audio.play_audio(blocking = True, audio = ['thanku-survey-{0}' .format(self.language)])
 
             # beep
-            self.beep = self.audio.play_audio(blocking = True, audio = 'beep.wav')
+            self.beep = self.audio.play_audio(blocking = True, audio = ['beep.wav'])
 
         # repeater message
-        digit = self.repeater(audio = 'vsurvey-repeater-{0}.wav' .format(self.language))
+        digit = self.repeater(audio = ['vsurvey-repeater-{0}.wav' .format(self.language)])
 
         if digit == '2':
             # vsurvey demo
@@ -201,7 +202,7 @@ class VDemo(threading.Thread):
             time.sleep(1)
 
             # play redirection messsage
-            self.audio.play_audio(blocking = True, audio = 'vsurvey-conclusion-{0}.wav' .format(self.language))
+            self.audio.play_audio(blocking = True, audio = ['vsurvey-conclusion-{0}.wav' .format(self.language)])
 
             # redirect to the main menu after vsurvey demo is completed
             self.menu()
@@ -217,37 +218,37 @@ class VDemo(threading.Thread):
         # vreport demo
         def vreport_demo():
             # beep
-            self.beep = self.audio.play_audio(blocking = True, audio = 'beep.wav')
+            self.beep = self.audio.play_audio(blocking = True, audio = ['beep.wav'])
 
             # vreport welcome message
-            self.report_welcome = self.audio.play_audio(blocking = True, audio = 'vreport-welcome-{0}.wav' .format(self.language))
+            self.report_welcome = self.audio.play_audio(blocking = True, audio = ['vreport-welcome-{0}.wav' .format(self.language)])
 
             # question1
-            self.question1 = self.audio.play_audio(blocking = True, audio = 'vreport-q1-{0}.wav' .format(self.language))
+            self.question1 = self.audio.play_audio(blocking = True, audio = ['vreport-q1-{0}.wav' .format(self.language)])
 
             # record for question1
             self.name = self.record.start_record()
 
             # question2
-            self.question2 = self.audio.play_audio(blocking = True, audio = 'vreport-q2-{0}.wav' .format(self.language))
+            self.question2 = self.audio.play_audio(blocking = True, audio = ['vreport-q2-{0}.wav' .format(self.language)])
 
             # record for question2
             self.problem = self.record.start_record()
 
             # question3
-            self.question3 = self.audio.play_audio(blocking = False, audio = 'vreport-q3-{0}.wav' .format(self.language))
+            self.question3 = self.audio.play_audio(blocking = False, audio = ['vreport-q3-{0}.wav' .format(self.language)])
 
             # wait for dtmf input for question3
             self.digit = self.dtmf.get_dtmf()
 
             # response message
-            self.audio.play_audio(blocking = True, audio = 'vreport-response-{0}.wav' .format(self.language))
+            self.audio.play_audio(blocking = True, audio = ['vreport-response-{0}.wav' .format(self.language)])
 
             # beep
-            self.beep = self.audio.play_audio(blocking = True, audio = 'beep.wav')
+            self.beep = self.audio.play_audio(blocking = True, audio = ['beep.wav'])
 
         # repeater message
-        digit = self.repeater(audio = 'vreport-repeater-{0}.wav' .format(self.language))
+        digit = self.repeater(audio = ['vreport-repeater-{0}.wav' .format(self.language)])
 
         if digit == '2':
             # vsupport demo
@@ -256,7 +257,7 @@ class VDemo(threading.Thread):
             time.sleep(1)
 
             # play redirection messsage
-            self.audio.play_audio(blocking = True, audio = 'vreport-conclusion-{0}.wav' .format(self.language))
+            self.audio.play_audio(blocking = True, audio = ['vreport-conclusion-{0}.wav' .format(self.language)])
 
             # redirect to the main menu after vsurvey demo is completed
             self.menu()
@@ -284,13 +285,13 @@ class VDemo(threading.Thread):
         # vbroadcast outbound
         def vbroadcast_outbund():
             # vbroadcast outbound description message
-            self.vbroadcast_outbound_description = self.audio.play_audio(blocking = True, audio = 'vbroadcast-outbound-description-{0}.wav' .format(self.language))
+            self.vbroadcast_outbound_description = self.audio.play_audio(blocking = True, audio = ['vbroadcast-outbound-description-{0}.wav' .format(self.language)])
 
             # repeater
-            self.audio.play_audio(blocking = False, audio = 'vbroadcast-outbound-repeater-{0}.wav' .format(self.language))
+            self.audio.play_audio(blocking = False, audio = ['vbroadcast-outbound-repeater-{0}.wav' .format(self.language)])
 
         # repeater
-        digit = self.repeater(audio = 'vbroadcast-repeater-{0}.wav' .format(self.language))
+        digit = self.repeater(audio = ['vbroadcast-repeater-{0}.wav' .format(self.language)])
 
         # wait for dtmf
         while digit:
@@ -298,7 +299,7 @@ class VDemo(threading.Thread):
             if digit == '1':
                 # demo of VBroadcast call from System
                 # call hangup message
-                self.vbroadcast_hangup = self.audio.play_audio(blocking = True, audio = 'vbroadcast-hangup-message-{0}.wav' .format(self.language))
+                self.vbroadcast_hangup = self.audio.play_audio(blocking = True, audio = ['vbroadcast-hangup-message-{0}.wav' .format(self.language)])
 
                 # hangup
                 self.hangup.hang_up()
@@ -321,7 +322,7 @@ class VDemo(threading.Thread):
 
     def menu(self):
         # play menu audio
-        self.menu = self.audio.play_audio(blocking = True, audio = 'menu-{0}.wav' .format(self.language))
+        self.menu = self.audio.play_audio(blocking = True, audio = ['menu-{0}.wav' .format(self.language)])
 
         # wait for menu input to choose services
         dtmf_digit = self.dtmf.get_dtmf()
@@ -329,23 +330,23 @@ class VDemo(threading.Thread):
             time.sleep(0.3)
             if dtmf_digit == '1':
                 # vboard service selected
-                self.vboard(audio = 'vboard-desc-{0}.wav' .format(self.language))
+                self.vboard(audio = ['vboard-desc-{0}.wav' .format(self.language)])
                 break
             elif dtmf_digit == '2':
                 # vsurvey service selected
-                self.vsurvey(audio = 'vsurvey-desc-{0}.wav' .format(self.language))
+                self.vsurvey(audio = ['vsurvey-desc-{0}.wav' .format(self.language)])
                 break
             elif dtmf_digit == '3':
                 # vreport service selected
-                self.vreport(audio = 'vreport-desc-{0}.wav' .format(self.language))
+                self.vreport(audio = ['vreport-desc-{0}.wav' .format(self.language)])
                 break
             elif dtmf_digit == '4':
                 # vsupport service selected
-                self.vsupport(audio = 'vsupport-desc-{0}.wav' .format(self.language))
+                self.vsupport(audio = ['vsupport-desc-{0}.wav' .format(self.language)])
                 break
             elif dtmf_digit == '5':
                 # vbroadcast service selected
-                self.vbroadcast(audio = 'vbroadcast-desc-{0}.wav' .format(self.language))
+                self.vbroadcast(audio = ['vbroadcast-desc-{0}.wav' .format(self.language)])
                 break
             elif dtmf_digit == '*':
                 # chosen to repeat the menu
@@ -361,7 +362,7 @@ class VDemo(threading.Thread):
         self.language = 'nepali'
 
         # description of vboard in nepali
-        self.voiceinn_desc = self.audio.play_audio(blocking = True, audio = 'voiceinn-desc-{0}.wav' .format(self.language))
+        self.voiceinn_desc = self.audio.play_audio(blocking = True, audio = ['voiceinn-desc-{0}.wav' .format(self.language)])
 
         # play menu to choose various services related to voiceinn_desc
         self.menu()
@@ -371,7 +372,7 @@ class VDemo(threading.Thread):
         self.language = 'english'
 
         # description of vboard in english
-        self.voiceinn_desc = self.audio.play_audio(blocking = True, audio = 'voiceinn-desc-{0}.wav' .format(self.language))
+        self.voiceinn_desc = self.audio.play_audio(blocking = True, audio = ['voiceinn-desc-{0}.wav' .format(self.language)])
 
         # play menu to choose various services related to voiceinn_desc
         self.menu()
@@ -392,7 +393,7 @@ class VDemo(threading.Thread):
             hangup.hang_up()
         
         # welcome to voiceinn demo (demo1.wav)
-        self.welcome = self.audio.play_audio(blocking = False, audio = 'welcome-demo1.wav')
+        self.welcome = self.audio.play_audio(blocking = False, audio = ['welcome-demo1.wav'])
 
         # language option choosing
         dtmf_digit = self.dtmf.get_dtmf()
@@ -432,6 +433,10 @@ class VDemo(threading.Thread):
 
     def end(self, start_time, end_time):
         print 'End'
+
+        ############## moving recorded files ##############
+        # utils.move_files(self.fnames)
+
         # start_time = arrow.get(start_time)
         # end_time = arrow.get(end_time)
         # duration = (end_time - start_time).total_seconds()

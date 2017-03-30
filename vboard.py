@@ -36,7 +36,7 @@ class VBoard(threading.Thread):
 
     def run(self):
         tot = self.kwargs['dialplan']['nodeDataArray'][1]['options']['total-notices']
-        self.welcome_audio = self.kwargs['dialplan']['nodeDataArray'][0]['options']['audiofile']
+        self.welcome_audio = [self.kwargs['dialplan']['nodeDataArray'][0]['options']['audiofile']]
         self.notice_audios = [items['options']['audiofile'] for items in self.kwargs['dialplan']['nodeDataArray'][1:tot + 1]]
         self.repeat_audio = [self.kwargs['dialplan']['nodeDataArray'][-2]['options']['audiofile']]
 

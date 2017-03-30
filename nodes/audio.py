@@ -18,19 +18,20 @@ class AudioNode(object):
 
 
     def play_blocking_audio(self, audio):
-        self.obj.subscribe_event('PlaybackFinished')
+        for sound in audio:
+            self.obj.subscribe_event('PlaybackFinished')
 
-        id = uuid.uuid1()
-        self.obj.uuids.append(id)
+            id = uuid.uuid1()
+            self.obj.uuids.append(id)
 
-        req_str = self.kwargs['req_base'] + ('channels/%s/play/%s?media=sound:%s' % (self.kwargs['channel_id'], id, audio))
-        requests.post(req_str, auth=(self.kwargs['username'], self.kwargs['password']))
+            req_str = self.kwargs['req_base'] + ('channels/%s/play/%s?media=sound:%s' % (self.kwargs['channel_id'], id, sound))
+            requests.post(req_str, auth=(self.kwargs['username'], self.kwargs['password']))
 
-        while True:
-            time.sleep(0.3)
-            if self.obj.eventDict['PlaybackFinished']['status']:
-                self.obj.unsubscribe_event('PlaybackFinished')
-                break
+            while True:
+                time.sleep(0.3)
+                if self.obj.eventDict['PlaybackFinished']['status']:
+                    self.obj.unsubscribe_event('PlaybackFinished')
+                    break
 
         return {'PlaybackFinished': True}
 

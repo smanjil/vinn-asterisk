@@ -67,11 +67,11 @@ class VNuwakot(threading.Thread):
             while dtmf_digit:
                 audio.delete_audio(self.uuids)
                 if dtmf_digit == '1':
-                    self.stat3 = audio.play_audio(blocking = True, audio = 'nuwakot/4')
+                    self.stat3 = audio.play_audio(blocking = True, audio = ['nuwakot/4'])
                     self.output['vboard']['vboard1'] = True
                     break
                 elif dtmf_digit == '2':
-                    self.stat4 = audio.play_audio(blocking = True, audio = 'nuwakot/5')
+                    self.stat4 = audio.play_audio(blocking = True, audio = ['nuwakot/5'])
                     self.output['vboard']['vboard2'] = True
                     break
 
@@ -85,7 +85,7 @@ class VNuwakot(threading.Thread):
 
         def Menu2():
             #Tapiko ga bi sa wa nagarpalika ko naam bhannuhos ani # thichuhos
-            self.stat5 = audio.play_audio(blocking = True, audio = 'nuwakot/6')
+            self.stat5 = audio.play_audio(blocking = True, audio = ['nuwakot/6'])
 
             # record application
             record = RecordNode(self, **self.kwargs)
@@ -113,7 +113,7 @@ class VNuwakot(threading.Thread):
                     break
 
             # tapaiko samasya vannuhos ani # thichnuhos
-            self.stat7 = audio.play_audio(blocking = True, audio = 'nuwakot/8')
+            self.stat7 = audio.play_audio(blocking = True, audio = ['nuwakot/8'])
 
             # record application
             record = RecordNode(self, **self.kwargs)
@@ -124,7 +124,7 @@ class VNuwakot(threading.Thread):
             self.output['vsurvey']['msg_audio'] = str(fname)
 
             # tapaiko samasya record vaeko xa
-            self.stat8 = audio.play_audio(blocking = True, audio = 'nuwakot/9')
+            self.stat8 = audio.play_audio(blocking = True, audio = ['nuwakot/9'])
 
             # log
             self.output['completed'] = True
@@ -139,7 +139,7 @@ class VNuwakot(threading.Thread):
 
         # welcome audio
         # Namaskar Nuwakot Hospital ko IVR sewa ma yaha lai swagat cha
-        self.stat1 = audio.play_audio(blocking = True, audio = 'nuwakot/1')
+        self.stat1 = audio.play_audio(blocking = True, audio = ['nuwakot/1'])
 
         # step2A - Play Menu audio
         # kripaya yesh hospital ko sewa bare bhjhna 1 thichnuhos. yesh hospital sanga
