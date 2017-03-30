@@ -21,9 +21,11 @@ class VDemo(threading.Thread):
         self.output = {}
 
         # nodes initilization
+        self.answer = AnswerNode(**self.kwargs)
         self.audio = AudioNode(self, **kwargs)
         self.dtmf = DtmfNode(self, options=['1', '2'])
         self.record = RecordNode(self, **self.kwargs)
+        self.hangup = HangupNode(**kwargs)
 
         # set database row with default value (initialize row)
         # self.generalized_data_incoming = GeneralizedDataIncoming(data=self.output, incoming_number=self.kwargs['incoming_number'], \
@@ -108,6 +110,7 @@ class VDemo(threading.Thread):
         digit = self.repeater(audio = 'vboard-repeater-{0}.wav' .format(self.language))
 
         if digit == '2':
+            # vboard demo
             vboard_demo()
 
     
@@ -192,6 +195,7 @@ class VDemo(threading.Thread):
         digit = self.repeater(audio = 'vsurvey-repeater-{0}.wav' .format(self.language))
 
         if digit == '2':
+            # vsurvey demo
             vsurvey_demo()        
             
             time.sleep(1)
@@ -246,6 +250,7 @@ class VDemo(threading.Thread):
         digit = self.repeater(audio = 'vreport-repeater-{0}.wav' .format(self.language))
 
         if digit == '2':
+            # vsupport demo
             vreport_demo()        
             
             time.sleep(1)
@@ -255,6 +260,63 @@ class VDemo(threading.Thread):
 
             # redirect to the main menu after vsurvey demo is completed
             self.menu()
+    
+
+    def vsupport(self, audio):
+        audio_name = audio
+
+        # play description audio
+        self.vsupport_description = self.audio.play_audio(blocking = True, audio = audio_name)
+
+        time.sleep(1)
+
+        # redirect to main menu
+        self.menu()
+    
+
+    def vbroadcast(self, audio):
+        audio_name = audio
+
+        # play description audio
+        self.vbroadcast_description = self.audio.play_audio(blocking = True, audio = audio_name)
+
+
+        # vbroadcast outbound
+        def vbroadcast_outbund():
+            # vbroadcast outbound description message
+            self.vbroadcast_outbound_description = self.audio.play_audio(blocking = True, audio = 'vbroadcast-outbound-description-{0}.wav' .format(self.language))
+
+            # repeater
+            self.audio.play_audio(blocking = False, audio = 'vbroadcast-outbound-repeater-{0}.wav' .format(self.language))
+
+        # repeater
+        digit = self.repeater(audio = 'vbroadcast-repeater-{0}.wav' .format(self.language))
+
+        # wait for dtmf
+        while digit:
+            time.sleep(0.3)
+            if digit == '1':
+                # demo of VBroadcast call from System
+                # call hangup message
+                self.vbroadcast_hangup = self.audio.play_audio(blocking = True, audio = 'vbroadcast-hangup-message-{0}.wav' .format(self.language))
+
+                # hangup
+                self.hangup.hang_up()
+
+                ########### prepare for outbound call to showcase the vbroadcast demo ######
+                vbroadcast_outbund()
+
+                # wait for dtmf
+                digit = self.dtmf.get_dtmf()
+                if digit == '*':
+                    vbroadcast_outbund()
+                elif digit == '#':
+                    self.hangup.hang_up()
+                break
+            elif digit == '#':
+                # go back to the main menu
+                self.menu()
+                break
 
 
     def menu(self):
@@ -279,11 +341,11 @@ class VDemo(threading.Thread):
                 break
             elif dtmf_digit == '4':
                 # vsupport service selected
-                pass
+                self.vsupport(audio = 'vsupport-desc-{0}.wav' .format(self.language))
                 break
             elif dtmf_digit == '5':
                 # vbroadcast service selected
-                pass
+                self.vbroadcast(audio = 'vbroadcast-desc-{0}.wav' .format(self.language))
                 break
             elif dtmf_digit == '*':
                 # chosen to repeat the menu
@@ -317,8 +379,7 @@ class VDemo(threading.Thread):
     
     def run(self):
         if self.kwargs['channels_inuse'] < self.kwargs['allocated_channels']:
-            answer = AnswerNode(**self.kwargs)
-            answer_status = answer.answer()
+            answer_status = self.answer.answer()
 
             if answer_status.status_code == 204:
                 self.kwargs['channels_inuse'] += 1
